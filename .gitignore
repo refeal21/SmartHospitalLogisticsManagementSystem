@@ -5,6 +5,10 @@ build/
 .next/
 .vite/
 coverage/
+bin/
+obj/
+**/bin/
+**/obj/
 *.tsbuildinfo
 
 # Environment and credentials

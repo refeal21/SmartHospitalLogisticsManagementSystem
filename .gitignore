@@ -1,0 +1,43 @@
+# Dependencies and build outputs
+node_modules/
+dist/
+build/
+.next/
+.vite/
+coverage/
+*.tsbuildinfo
+
+# Environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Local/editor/cache files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+*.tmp
+*.bak
+
+# Internal source materials - do not upload to public GitHub
+AI辅助DEBUG实战_培训大纲.md
+竞业达AI辅助开发规范.md
+CLAUDE项目样例.md
+CODEx项目执行记忆.md
+/*.pptx
+/*.ppt
+/*.jpg
+/*.jpeg
+/*.png
+internal-materials/
+source-materials/
+
+# Local generated analysis artifacts
+analysis-output/
+hospital_ppt_sheets/

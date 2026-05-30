@@ -5,6 +5,10 @@ build/
 .next/
 .vite/
 coverage/
+playwright-report/
+test-results/
+web/playwright-report/
+web/test-results/
 bin/
 obj/
 **/bin/

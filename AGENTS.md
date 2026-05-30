@@ -20,6 +20,9 @@ Build a powerful hospital logistics management system from zero to one. Do not b
 ## Engineering Discipline
 
 - One coherent feature or document change per commit.
+- Push completed commits to GitHub promptly when authentication is available; do not let local work pile up invisibly.
+- Before every commit, run `git status --short --ignored` and confirm internal source materials, PPT exports, credentials, and build caches are ignored.
+- Commit messages for AI-assisted work must include an `AI-Assisted-By: Codex (GPT-5.5)` trailer.
 - Never commit secrets. Use environment variables and `.env.example`.
 - Validate changes with build, type checks, tests, and browser checks when applicable.
 - Use structured debugging: reproduction steps, expected vs actual behavior, hypotheses, verification, fix, regression test.

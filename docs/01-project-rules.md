@@ -29,6 +29,15 @@
 - 安全功能必须覆盖认证、授权、最小权限、输入校验、输出编码、操作审计、敏感信息脱敏。
 - 测试至少覆盖领域逻辑、API 合约、权限边界、核心页面流程和异常路径。
 
+## GitHub 代码管理纪律
+
+- GitHub 是本项目的代码事实源，远程仓库为 `https://github.com/refeal21/SmartHospitalLogisticsManagementSystem.git`。
+- 每完成一个独立功能点、文档点或修复点，必须形成一次清晰 commit，并在认证可用时及时 push。
+- 提交前必须执行 `git status --short --ignored`，确认内部培训原文、PPT、截图、token、`.env`、`node_modules/`、`bin/`、`obj/` 不会进入提交。
+- Commit Message 采用 `type: summary`，并追加 `AI-Assisted-By: Codex (GPT-5.5)`。
+- 允许提交脱敏后的项目文档、工程配置、源代码、测试和 mock 数据；禁止提交公司资料原文、客户真实数据、生产配置和第三方 skills 源码。
+- 若 push 失败，先判断是认证、远程地址还是分支问题；修复后立即重试，不在本地长期堆积未上传提交。
+
 ## GitHub MCP 配置状态
 
 已在用户级 Codex 配置中加入 GitHub 官方远程 MCP：

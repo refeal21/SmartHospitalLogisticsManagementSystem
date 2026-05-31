@@ -108,6 +108,16 @@ public static class DependencyInjection
 
             return new SqliteSafetyEmergencyPersistence(dbPath);
         });
+        services.AddSingleton<IPlatformGovernancePersistence>(_ =>
+        {
+            var dbPath = Environment.GetEnvironmentVariable("SMART_HOSPITAL_LOGISTICS_GOVERNANCE_DB");
+            if (string.IsNullOrWhiteSpace(dbPath))
+            {
+                dbPath = Path.Combine(AppContext.BaseDirectory, "data", "smart-hospital-governance.db");
+            }
+
+            return new SqlitePlatformGovernancePersistence(dbPath);
+        });
         services.AddSingleton<WorkOrderDispatchService>();
         services.AddSingleton<IWorkOrderDispatchService>(provider => provider.GetRequiredService<WorkOrderDispatchService>());
         services.AddSingleton<IWorkOrderIntakeService>(provider => provider.GetRequiredService<WorkOrderDispatchService>());
@@ -122,6 +132,7 @@ public static class DependencyInjection
         services.AddSingleton<IWaterOperationsService, WaterOperationsService>();
         services.AddSingleton<IEnergyPerformanceService, EnergyPerformanceService>();
         services.AddSingleton<ISafetyEmergencyService, SafetyEmergencyService>();
+        services.AddSingleton<IPlatformGovernanceService, PlatformGovernanceService>();
         return services;
     }
 }

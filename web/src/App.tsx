@@ -746,6 +746,87 @@ type SafetyEmergencyNodeDetail = {
   sourceEvidence: FeatureEvidence[]
 }
 
+type PlatformGovernanceControlType =
+  | 'QualitySla'
+  | 'ContractPerformance'
+  | 'TeamPerformance'
+  | 'EnergyCost'
+  | 'SafetyEmergency'
+
+type PlatformGovernanceControlStatus = 'OnTrack' | 'Attention' | 'InProgress' | 'Overdue' | 'Closed'
+
+type GovernanceActionStatus = 'Pending' | 'InProgress' | 'Closed'
+
+type PlatformGovernanceControl = {
+  controlCode: string
+  name: string
+  controlType: PlatformGovernanceControlType
+  ownerRole: string
+  metricName: string
+  targetValue: number
+  currentValue: number
+  unit: string
+  status: PlatformGovernanceControlStatus
+  dueAt: string
+  relatedModule: string
+  sourceEvidence: FeatureEvidence[]
+}
+
+type PlatformGovernanceAction = {
+  actionCode: string
+  controlCode: string
+  title: string
+  responsibleRole: string
+  recordedBy: string
+  status: GovernanceActionStatus
+  createdAt: string
+  dueAt: string
+  relatedWorkOrderNo?: string | null
+}
+
+type PlatformGovernanceAuditEntry = {
+  auditCode: string
+  controlCode: string
+  operation: string
+  actor: string
+  occurredAt: string
+  summary: string
+}
+
+type PlatformGovernanceKpi = {
+  controlCount: number
+  attentionControlCount: number
+  overdueControlCount: number
+  openActionCount: number
+  auditTrailCount: number
+}
+
+type PlatformGovernanceBoard = {
+  generatedAt: string
+  controls: PlatformGovernanceControl[]
+  actions: PlatformGovernanceAction[]
+  relatedWorkOrders: WorkOrder[]
+  relatedAlarms: MonitoringAlarmEvent[]
+  performanceMetrics: OperationPerformanceMetric[]
+  sourceEvidence: FeatureEvidence[]
+  kpis: PlatformGovernanceKpi
+}
+
+type PlatformGovernanceControlDetail = {
+  control: PlatformGovernanceControl
+  actions: PlatformGovernanceAction[]
+  relatedWorkOrders: WorkOrder[]
+  relatedAlarms: MonitoringAlarmEvent[]
+  auditTrail: PlatformGovernanceAuditEntry[]
+  sourceEvidence: FeatureEvidence[]
+}
+
+type PlatformGovernanceActionResult = {
+  succeeded: boolean
+  message: string
+  detail?: PlatformGovernanceControlDetail | null
+}
+
 type SpatialPointKind = 'workOrder' | 'asset' | 'alarm' | 'iot'
 type SpatialPointTone = 'workorder' | 'asset' | 'alert' | 'normal'
 
@@ -784,6 +865,7 @@ type WorkspacePage =
   | 'waterOperations'
   | 'energyPerformance'
   | 'safetyEmergency'
+  | 'platformGovernance'
   | 'spatial'
   | 'evidence'
 
@@ -1974,6 +2056,105 @@ const localSafetyEmergencyBoard: SafetyEmergencyBoard = {
   },
 }
 
+const platformGovernanceSourceEvidence: FeatureEvidence[] = [
+  {
+    featureName: '综合管理与运营闭环',
+    sources: ['中科医信', 'PPT'],
+    evidenceSummary: '竞品功能树包含质量体系、合同、考核、服务品质和运营分析；PPT 将质量、成本、能耗和安全纳入综合管理闭环。',
+  },
+  {
+    featureName: '客户运行数据驱动治理项',
+    sources: ['北建院', '中科医信', 'PPT'],
+    evidenceSummary: '客户调研数据中的强电、暖通、给排水、消防安防等系统需要从专项告警、工单和能耗结果上卷到管理层治理动作。',
+  },
+]
+
+const localPlatformGovernanceBoard: PlatformGovernanceBoard = {
+  generatedAt: '2026-05-30T09:30:00+08:00',
+  controls: [
+    {
+      controlCode: 'GOV-SLA-ONE-STOP',
+      name: '一站式服务 SLA 与闭环质量',
+      controlType: 'QualitySla',
+      ownerRole: '后勤管理部',
+      metricName: 'SLA 达成率',
+      targetValue: 95,
+      currentValue: 93.6,
+      unit: '%',
+      status: 'Attention',
+      dueAt: '2026-06-01T09:30:00+08:00',
+      relatedModule: '一站式服务 / 工单调度',
+      sourceEvidence: platformGovernanceSourceEvidence,
+    },
+    {
+      controlCode: 'GOV-ENERGY-COST',
+      name: '能耗成本异常治理',
+      controlType: 'EnergyCost',
+      ownerRole: '能源管理岗',
+      metricName: '今日能耗成本',
+      targetValue: 1800,
+      currentValue: 1875,
+      unit: '元',
+      status: 'Attention',
+      dueAt: '2026-06-02T09:30:00+08:00',
+      relatedModule: '能耗与运行绩效',
+      sourceEvidence: platformGovernanceSourceEvidence,
+    },
+    {
+      controlCode: 'GOV-SAFETY-EMERGENCY',
+      name: '消防安防应急联动复盘',
+      controlType: 'SafetyEmergency',
+      ownerRole: '安全应急管理岗',
+      metricName: '未闭环事件',
+      targetValue: 0,
+      currentValue: 1,
+      unit: '项',
+      status: 'Attention',
+      dueAt: '2026-05-31T09:30:00+08:00',
+      relatedModule: '消防/安防/应急联动',
+      sourceEvidence: platformGovernanceSourceEvidence,
+    },
+  ],
+  actions: [
+    {
+      actionCode: 'ACT-GOV-SLA-ONE-STOP-001',
+      controlCode: 'GOV-SLA-ONE-STOP',
+      title: '复核夜间高优先级工单派工超时原因',
+      responsibleRole: '后勤调度员',
+      recordedBy: '系统种子',
+      status: 'InProgress',
+      createdAt: '2026-05-30T09:30:00+08:00',
+      dueAt: '2026-05-31T09:30:00+08:00',
+      relatedWorkOrderNo: null,
+    },
+  ],
+  relatedWorkOrders: localWorkOrders.filter((order) => order.priority === 'Critical' || order.priority === 'High'),
+  relatedAlarms: [],
+  performanceMetrics: [
+    { metricCode: 'governance-closure-rate', name: '治理闭环率', value: 72.5, unit: '%', benchmark: '目标 >= 90%', status: 'Warning' },
+    { metricCode: 'governance-risk-score', name: '运营风险指数', value: 46, unit: '分', benchmark: '控制在 30 分以内', status: 'Warning' },
+  ],
+  sourceEvidence: platformGovernanceSourceEvidence,
+  kpis: {
+    controlCount: 3,
+    attentionControlCount: 3,
+    overdueControlCount: 0,
+    openActionCount: 1,
+    auditTrailCount: 1,
+  },
+}
+
+const localPlatformGovernanceAuditTrail: PlatformGovernanceAuditEntry[] = [
+  {
+    auditCode: 'AUD-GOV-SLA-ONE-STOP-001',
+    controlCode: 'GOV-SLA-ONE-STOP',
+    operation: 'SeedControl',
+    actor: '系统种子',
+    occurredAt: '2026-05-30T09:30:00+08:00',
+    summary: '建立 SLA 治理项和初始整改动作',
+  },
+]
+
 const statusLabels: Record<WorkOrderStatus | FacilityStatus | SignalStatus, string> = {
   New: '新建',
   Dispatched: '已派工',
@@ -2086,6 +2267,14 @@ const safetyEmergencyStatusLabels: Record<SafetyEmergencyNodeStatus, string> = {
   Closed: '已关闭',
 }
 
+const platformGovernanceStatusLabels: Record<PlatformGovernanceControlStatus, string> = {
+  OnTrack: '正常',
+  Attention: '关注',
+  InProgress: '整改中',
+  Overdue: '逾期',
+  Closed: '已闭环',
+}
+
 const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = {
   overview: {
     title: '后勤运营总览',
@@ -2131,6 +2320,10 @@ const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = 
     title: '消防安防应急联动工作台',
     summary: '接收消防、门禁、公共安全事件，联动 BIM 位置、告警确认、应急步骤和一站式工单调度。',
   },
+  platformGovernance: {
+    title: '平台治理与运营闭环工作台',
+    summary: '把质量、合同、班组、能耗和安全应急指标上卷为治理项，并把偏差登记为可审计的整改动作。',
+  },
   spatial: {
     title: 'BIM 空间运维工作台',
     summary: '聚焦空间定位：设备、告警、工单和班组负载在同一空间语境里联动。',
@@ -2149,6 +2342,18 @@ const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5248'
 
 function pageFromMenuItem(item: string): WorkspacePage {
   const normalized = item.toLowerCase()
+  if (
+    normalized.includes('platform-governance') ||
+    normalized.includes('governance') ||
+    item.includes('平台治理') ||
+    item.includes('运营分析') ||
+    item.includes('质量') ||
+    item.includes('合同') ||
+    item.includes('考核')
+  ) {
+    return 'platformGovernance'
+  }
+
   if (
     normalized.includes('safety-emergency') ||
     normalized.includes('safety') ||
@@ -2319,6 +2524,10 @@ function App() {
     buildLocalSafetyEmergencyDetail('SAFE-FIRE-OPD-1F'),
   )
   const [convertedSafetyEmergencyDetail, setConvertedSafetyEmergencyDetail] = useState<WorkOrderDetail | null>(null)
+  const [platformGovernanceBoard, setPlatformGovernanceBoard] = useState(localPlatformGovernanceBoard)
+  const [platformGovernanceDetail, setPlatformGovernanceDetail] = useState(() =>
+    buildLocalPlatformGovernanceDetail('GOV-SLA-ONE-STOP'),
+  )
   const [iotCatalog, setIotCatalog] = useState(localIotCatalog)
   const [selectedIotPoint, setSelectedIotPoint] = useState(() => buildLocalIotPointDetail('MEDGAS-O2-8F'))
   const [lastTelemetryResult, setLastTelemetryResult] = useState<TelemetryIngestionResult | null>(null)
@@ -2364,6 +2573,7 @@ function App() {
       fetch(`${apiBase}/api/operations/water-operations-board`, { signal: controller.signal }),
       fetch(`${apiBase}/api/operations/energy-performance-board`, { signal: controller.signal }),
       fetch(`${apiBase}/api/operations/safety-emergency-board`, { signal: controller.signal }),
+      fetch(`${apiBase}/api/operations/platform-governance-board`, { signal: controller.signal }),
     ])
       .then(async ([
         dashboardResponse,
@@ -2378,6 +2588,7 @@ function App() {
         waterOperationsBoardResponse,
         energyPerformanceBoardResponse,
         safetyEmergencyBoardResponse,
+        platformGovernanceBoardResponse,
       ]) => {
         if (
           !dashboardResponse.ok ||
@@ -2391,7 +2602,8 @@ function App() {
           !hvacBoardResponse.ok ||
           !waterOperationsBoardResponse.ok ||
           !energyPerformanceBoardResponse.ok ||
-          !safetyEmergencyBoardResponse.ok
+          !safetyEmergencyBoardResponse.ok ||
+          !platformGovernanceBoardResponse.ok
         ) {
           throw new Error('Logistics API unavailable')
         }
@@ -2406,6 +2618,7 @@ function App() {
         const fetchedWaterOperationsBoard = (await waterOperationsBoardResponse.json()) as WaterOperationsBoard
         const fetchedEnergyPerformanceBoard = (await energyPerformanceBoardResponse.json()) as EnergyPerformanceBoard
         const fetchedSafetyEmergencyBoard = (await safetyEmergencyBoardResponse.json()) as SafetyEmergencyBoard
+        const fetchedPlatformGovernanceBoard = (await platformGovernanceBoardResponse.json()) as PlatformGovernanceBoard
         setDashboard((await dashboardResponse.json()) as OperationsDashboard)
         setBlueprint((await blueprintResponse.json()) as LogisticsBlueprint)
         setDispatchBoard(board)
@@ -2418,6 +2631,7 @@ function App() {
         setWaterOperationsBoard(fetchedWaterOperationsBoard)
         setEnergyPerformanceBoard(fetchedEnergyPerformanceBoard)
         setSafetyEmergencyBoard(fetchedSafetyEmergencyBoard)
+        setPlatformGovernanceBoard(fetchedPlatformGovernanceBoard)
         setSelectedAlarm(fetchedAlarmBoard.alarms[0] ?? null)
         setSource('api')
 
@@ -2511,6 +2725,16 @@ function App() {
           })
           if (safetyResponse.ok) {
             setSafetyEmergencyNodeDetail((await safetyResponse.json()) as SafetyEmergencyNodeDetail)
+          }
+        }
+
+        const firstGovernanceControlCode = fetchedPlatformGovernanceBoard.controls[0]?.controlCode
+        if (firstGovernanceControlCode) {
+          const governanceResponse = await fetch(`${apiBase}/api/operations/platform-governance-controls/${firstGovernanceControlCode}`, {
+            signal: controller.signal,
+          })
+          if (governanceResponse.ok) {
+            setPlatformGovernanceDetail((await governanceResponse.json()) as PlatformGovernanceControlDetail)
           }
         }
       })
@@ -3652,6 +3876,95 @@ function App() {
 
     if (detail) {
       setSelectedDetail(detail)
+    }
+    openServiceWorkflowTab(serviceWorkflowTabs[1])
+  }
+
+  async function loadPlatformGovernanceDetail(controlCode: string, forceApi = false) {
+    if (source === 'api' || forceApi) {
+      const response = await fetch(`${apiBase}/api/operations/platform-governance-controls/${controlCode}`)
+      if (response.ok) {
+        setPlatformGovernanceDetail((await response.json()) as PlatformGovernanceControlDetail)
+        return
+      }
+    }
+
+    setPlatformGovernanceDetail(buildLocalPlatformGovernanceDetail(controlCode))
+  }
+
+  async function recordPlatformGovernanceAction() {
+    const controlCode = platformGovernanceDetail.control.controlCode
+    if (source === 'api') {
+      const response = await fetch(`${apiBase}/api/operations/platform-governance-controls/${controlCode}/actions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: '登记 SLA 复盘整改动作',
+          responsibleRole: platformGovernanceDetail.control.ownerRole,
+          recordedBy: '后勤管理部',
+        }),
+      })
+      if (response.ok) {
+        const result = (await response.json()) as PlatformGovernanceActionResult
+        if (result.detail) {
+          setPlatformGovernanceDetail(result.detail)
+          const boardResponse = await fetch(`${apiBase}/api/operations/platform-governance-board`)
+          if (boardResponse.ok) {
+            setPlatformGovernanceBoard((await boardResponse.json()) as PlatformGovernanceBoard)
+          }
+        }
+        return
+      }
+    }
+
+    const actionIndex = platformGovernanceDetail.actions.length + 1
+    const action: PlatformGovernanceAction = {
+      actionCode: `ACT-${controlCode}-${actionIndex.toString().padStart(3, '0')}`,
+      controlCode,
+      title: '整改动作：登记 SLA 复盘整改动作',
+      responsibleRole: platformGovernanceDetail.control.ownerRole,
+      recordedBy: '后勤管理部',
+      status: 'InProgress',
+      createdAt: new Date().toISOString(),
+      dueAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+      relatedWorkOrderNo: null,
+    }
+    const auditEntry: PlatformGovernanceAuditEntry = {
+      auditCode: `AUD-${controlCode}-${actionIndex.toString().padStart(3, '0')}`,
+      controlCode,
+      operation: 'RecordAction',
+      actor: '后勤管理部',
+      occurredAt: action.createdAt,
+      summary: action.title,
+    }
+    const updatedDetail: PlatformGovernanceControlDetail = {
+      ...platformGovernanceDetail,
+      control: { ...platformGovernanceDetail.control, status: 'InProgress' },
+      actions: [action, ...platformGovernanceDetail.actions],
+      auditTrail: [auditEntry, ...platformGovernanceDetail.auditTrail],
+    }
+    setPlatformGovernanceDetail(updatedDetail)
+    setPlatformGovernanceBoard((current) => ({
+      ...current,
+      controls: current.controls.map((control) =>
+        control.controlCode === controlCode ? { ...control, status: 'InProgress' } : control,
+      ),
+      actions: [action, ...current.actions],
+      kpis: {
+        ...current.kpis,
+        openActionCount: current.kpis.openActionCount + 1,
+        auditTrailCount: current.kpis.auditTrailCount + 1,
+      },
+    }))
+  }
+
+  function openGovernanceDispatchContext() {
+    const targetOrder =
+      platformGovernanceDetail.relatedWorkOrders[0] ??
+      platformGovernanceBoard.relatedWorkOrders[0] ??
+      dispatchBoard.workOrders[0]
+    if (targetOrder) {
+      void loadDetail(targetOrder.workOrderNo)
     }
     openServiceWorkflowTab(serviceWorkflowTabs[1])
   }
@@ -5409,6 +5722,131 @@ function App() {
             </div>
           </section>
 
+          <section className="panel platform-governance-panel">
+            <PanelHeader title="平台治理与运营闭环" meta="质量 / 合同 / 考核 / 能耗 / 安全 / 整改动作" />
+            <div className="medical-gas-workbench" data-testid="platform-governance-board">
+              <section className="medical-gas-summary">
+                <h2>治理总览</h2>
+                <div className="medical-gas-kpis">
+                  <article>
+                    <span>治理项</span>
+                    <strong>{platformGovernanceBoard.kpis.controlCount}</strong>
+                  </article>
+                  <article>
+                    <span>关注项</span>
+                    <strong>{platformGovernanceBoard.kpis.attentionControlCount}</strong>
+                  </article>
+                  <article>
+                    <span>逾期项</span>
+                    <strong>{platformGovernanceBoard.kpis.overdueControlCount}</strong>
+                  </article>
+                  <article>
+                    <span>整改动作</span>
+                    <strong>{platformGovernanceBoard.kpis.openActionCount}</strong>
+                  </article>
+                </div>
+                {platformGovernanceBoard.controls.map((control) => (
+                  <button
+                    className={`medical-gas-zone-card ${platformGovernanceDetail.control.controlCode === control.controlCode ? 'selected' : ''}`}
+                    key={control.controlCode}
+                    type="button"
+                    onClick={() => void loadPlatformGovernanceDetail(control.controlCode)}
+                  >
+                    <strong>{control.name}</strong>
+                    <span>{control.controlCode} / {platformGovernanceStatusLabels[control.status]}</span>
+                    <small>{control.metricName}: {control.currentValue}{control.unit} / 目标 {control.targetValue}{control.unit}</small>
+                  </button>
+                ))}
+              </section>
+
+              <section className="medical-gas-detail">
+                <h2>治理项详情</h2>
+                <div className="detail-title">
+                  <strong>{platformGovernanceDetail.control.name}</strong>
+                  <span>{platformGovernanceStatusLabels[platformGovernanceDetail.control.status]}</span>
+                </div>
+                <dl className="detail-list">
+                  <div>
+                    <dt>责任</dt>
+                    <dd>{platformGovernanceDetail.control.ownerRole}</dd>
+                  </div>
+                  <div>
+                    <dt>模块</dt>
+                    <dd>{platformGovernanceDetail.control.relatedModule}</dd>
+                  </div>
+                  <div>
+                    <dt>指标</dt>
+                    <dd>{platformGovernanceDetail.control.metricName} {platformGovernanceDetail.control.currentValue}{platformGovernanceDetail.control.unit}</dd>
+                  </div>
+                  <div>
+                    <dt>来源</dt>
+                    <dd>{platformGovernanceDetail.sourceEvidence.flatMap((item) => item.sources).join('、')}</dd>
+                  </div>
+                </dl>
+                <p className="detail-note">
+                  {platformGovernanceDetail.sourceEvidence.map((item) => item.featureName).join(' / ')}
+                </p>
+              </section>
+
+              <section className="medical-gas-linked">
+                <h2>绩效与审计</h2>
+                {platformGovernanceBoard.performanceMetrics.map((metric) => (
+                  <article key={metric.metricCode}>
+                    <strong>{metric.name}</strong>
+                    <span>{metric.value}{metric.unit} / {energyPerformanceStatusLabels[metric.status]}</span>
+                    <small>{metric.benchmark}</small>
+                  </article>
+                ))}
+                {platformGovernanceDetail.auditTrail.map((entry) => (
+                  <article key={entry.auditCode}>
+                    <strong>{entry.operation}</strong>
+                    <span>{entry.actor}</span>
+                    <small>{entry.summary}</small>
+                  </article>
+                ))}
+              </section>
+
+              <section className="medical-gas-actions">
+                <h2>整改动作与联动</h2>
+                <div className="action-bar">
+                  <button data-testid="platform-governance-record-action" type="button" onClick={() => void recordPlatformGovernanceAction()}>
+                    登记整改动作
+                  </button>
+                  <button data-testid="platform-governance-open-dispatch" type="button" onClick={openGovernanceDispatchContext}>
+                    进入调度池
+                  </button>
+                </div>
+                <div className="medical-gas-flow-list">
+                  {platformGovernanceDetail.actions.map((action) => (
+                    <article key={action.actionCode}>
+                      <strong>{action.actionCode}</strong>
+                      <span>{action.title} / {action.responsibleRole}</span>
+                      <small>{action.status} / {action.relatedWorkOrderNo ?? '未绑定工单'}</small>
+                    </article>
+                  ))}
+                  {activePage === 'platformGovernance'
+                    ? platformGovernanceDetail.relatedWorkOrders.map((order) => (
+                        <article key={order.workOrderNo}>
+                          <strong>{order.workOrderNo}</strong>
+                          <span>{order.title} / {priorityLabels[order.priority]}</span>
+                          <small>{order.location.bimElementId}</small>
+                        </article>
+                      ))
+                    : null}
+                  {activePage === 'platformGovernance'
+                    ? platformGovernanceDetail.relatedAlarms.map((alarm) => (
+                        <article key={alarm.alarmNo}>
+                          <strong>{alarm.alarmNo}</strong>
+                          <span>{alarm.pointCode} / {telemetryRiskLabels[alarm.riskLevel]}</span>
+                          <small>{alarm.workOrderNo ?? '未转工单'}</small>
+                        </article>
+                      ))
+                    : null}
+                </div>
+              </section>
+            </div>
+          </section>
+
           <section className="panel spatial-panel">
             <PanelHeader title="BIM 空间业务定位" meta="设备 / 告警 / 工单同图层" />
             {activePage === 'spatial' ? (
@@ -6026,6 +6464,29 @@ function buildLocalSafetyEmergencyDetail(nodeCode: string): SafetyEmergencyNodeD
     openWorkOrders: localSafetyEmergencyBoard.openWorkOrders.filter((order) => order.location.bimElementId === node.location.bimElementId),
     responseProcedure: localSafetyProcedure,
     sourceEvidence: safetyEmergencySourceEvidence,
+  }
+}
+
+function buildLocalPlatformGovernanceDetail(controlCode: string): PlatformGovernanceControlDetail {
+  const control =
+    localPlatformGovernanceBoard.controls.find((item) => item.controlCode === controlCode) ??
+    localPlatformGovernanceBoard.controls[0]
+
+  return {
+    control,
+    actions: localPlatformGovernanceBoard.actions.filter((action) => action.controlCode === control.controlCode),
+    relatedWorkOrders: localPlatformGovernanceBoard.relatedWorkOrders.filter((order) => {
+      if (control.controlCode === 'GOV-SAFETY-EMERGENCY') {
+        return order.location.bimElementId.includes('BIM-SEC')
+      }
+      if (control.controlCode === 'GOV-ENERGY-COST') {
+        return order.location.bimElementId.includes('BIM-ENE')
+      }
+      return order.priority === 'Critical' || order.priority === 'High'
+    }),
+    relatedAlarms: localPlatformGovernanceBoard.relatedAlarms,
+    auditTrail: localPlatformGovernanceAuditTrail.filter((entry) => entry.controlCode === control.controlCode),
+    sourceEvidence: platformGovernanceSourceEvidence,
   }
 }
 

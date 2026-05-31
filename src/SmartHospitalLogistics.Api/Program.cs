@@ -210,6 +210,22 @@ api.MapGet("/safety-emergency-nodes/{nodeCode}", (string nodeCode, ISafetyEmerge
         : Results.NotFound(new { error = $"Safety emergency node {nodeCode} was not found." }))
     .WithName("GetSafetyEmergencyNodeDetail");
 
+api.MapGet("/platform-governance-board", (IPlatformGovernanceService service) => service.GetBoard())
+    .WithName("GetPlatformGovernanceBoard");
+
+api.MapGet("/platform-governance-controls/{controlCode}", (string controlCode, IPlatformGovernanceService service) =>
+    service.GetControlDetail(controlCode) is { } detail
+        ? Results.Ok(detail)
+        : Results.NotFound(new { error = $"Platform governance control {controlCode} was not found." }))
+    .WithName("GetPlatformGovernanceControlDetail");
+
+api.MapPost("/platform-governance-controls/{controlCode}/actions", (string controlCode, CreateGovernanceActionCommand command, IPlatformGovernanceService service) =>
+{
+    var result = service.RecordAction(controlCode, command);
+    return result.Succeeded ? Results.Ok(result) : Results.BadRequest(result);
+})
+    .WithName("RecordPlatformGovernanceAction");
+
 app.Run();
 
 static IResult ToHttpResult(DispatchOperationResult result)

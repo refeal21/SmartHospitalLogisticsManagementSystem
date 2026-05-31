@@ -25,6 +25,7 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
             services.RemoveAll<IWaterOperationsPersistence>();
             services.RemoveAll<IEnergyPerformancePersistence>();
             services.RemoveAll<ISafetyEmergencyPersistence>();
+            services.RemoveAll<IPlatformGovernancePersistence>();
             services.RemoveAll<WorkOrderDispatchService>();
             services.RemoveAll<IWorkOrderDispatchService>();
             services.RemoveAll<IWorkOrderIntakeService>();
@@ -39,6 +40,7 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
             services.RemoveAll<IWaterOperationsService>();
             services.RemoveAll<IEnergyPerformanceService>();
             services.RemoveAll<ISafetyEmergencyService>();
+            services.RemoveAll<IPlatformGovernanceService>();
 
             services.AddSingleton<IWorkOrderPersistence>(_ =>
                 new SqliteWorkOrderPersistence(Path.Combine(_dbDirectory, "work-orders.db")));
@@ -60,6 +62,8 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
                 new SqliteEnergyPerformancePersistence(Path.Combine(_dbDirectory, "energy.db")));
             services.AddSingleton<ISafetyEmergencyPersistence>(_ =>
                 new SqliteSafetyEmergencyPersistence(Path.Combine(_dbDirectory, "safety.db")));
+            services.AddSingleton<IPlatformGovernancePersistence>(_ =>
+                new SqlitePlatformGovernancePersistence(Path.Combine(_dbDirectory, "governance.db")));
 
             services.AddSingleton<WorkOrderDispatchService>();
             services.AddSingleton<IWorkOrderDispatchService>(provider => provider.GetRequiredService<WorkOrderDispatchService>());
@@ -75,6 +79,7 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
             services.AddSingleton<IWaterOperationsService, WaterOperationsService>();
             services.AddSingleton<IEnergyPerformanceService, EnergyPerformanceService>();
             services.AddSingleton<ISafetyEmergencyService, SafetyEmergencyService>();
+            services.AddSingleton<IPlatformGovernanceService, PlatformGovernanceService>();
         });
     }
 

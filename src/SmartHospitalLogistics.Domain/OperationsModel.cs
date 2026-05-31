@@ -893,6 +893,99 @@ public sealed record SafetyEmergencyNodeDetail(
     IReadOnlyList<EmergencyResponseStep> ResponseProcedure,
     IReadOnlyList<FeatureEvidence> SourceEvidence);
 
+public enum PlatformGovernanceControlType
+{
+    QualitySla,
+    ContractPerformance,
+    TeamPerformance,
+    EnergyCost,
+    SafetyEmergency
+}
+
+public enum PlatformGovernanceControlStatus
+{
+    OnTrack,
+    Attention,
+    InProgress,
+    Overdue,
+    Closed
+}
+
+public enum GovernanceActionStatus
+{
+    Pending,
+    InProgress,
+    Closed
+}
+
+public sealed record PlatformGovernanceControl(
+    string ControlCode,
+    string Name,
+    PlatformGovernanceControlType ControlType,
+    string OwnerRole,
+    string MetricName,
+    decimal TargetValue,
+    decimal CurrentValue,
+    string Unit,
+    PlatformGovernanceControlStatus Status,
+    DateTimeOffset DueAt,
+    string RelatedModule,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
+
+public sealed record PlatformGovernanceAction(
+    string ActionCode,
+    string ControlCode,
+    string Title,
+    string ResponsibleRole,
+    string RecordedBy,
+    GovernanceActionStatus Status,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset DueAt,
+    string? RelatedWorkOrderNo);
+
+public sealed record PlatformGovernanceAuditEntry(
+    string AuditCode,
+    string ControlCode,
+    string Operation,
+    string Actor,
+    DateTimeOffset OccurredAt,
+    string Summary);
+
+public sealed record PlatformGovernanceKpi(
+    int ControlCount,
+    int AttentionControlCount,
+    int OverdueControlCount,
+    int OpenActionCount,
+    int AuditTrailCount);
+
+public sealed record PlatformGovernanceBoard(
+    DateTimeOffset GeneratedAt,
+    IReadOnlyList<PlatformGovernanceControl> Controls,
+    IReadOnlyList<PlatformGovernanceAction> Actions,
+    IReadOnlyList<WorkOrder> RelatedWorkOrders,
+    IReadOnlyList<MonitoringAlarmEvent> RelatedAlarms,
+    IReadOnlyList<OperationPerformanceMetric> PerformanceMetrics,
+    IReadOnlyList<FeatureEvidence> SourceEvidence,
+    PlatformGovernanceKpi Kpis);
+
+public sealed record PlatformGovernanceControlDetail(
+    PlatformGovernanceControl Control,
+    IReadOnlyList<PlatformGovernanceAction> Actions,
+    IReadOnlyList<WorkOrder> RelatedWorkOrders,
+    IReadOnlyList<MonitoringAlarmEvent> RelatedAlarms,
+    IReadOnlyList<PlatformGovernanceAuditEntry> AuditTrail,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
+
+public sealed record CreateGovernanceActionCommand(
+    string Title,
+    string ResponsibleRole,
+    string RecordedBy);
+
+public sealed record PlatformGovernanceActionResult(
+    bool Succeeded,
+    string Message,
+    PlatformGovernanceControlDetail? Detail);
+
 public sealed record FeatureEvidence(
     string FeatureName,
     IReadOnlyList<string> Sources,

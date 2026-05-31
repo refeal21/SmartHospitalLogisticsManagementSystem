@@ -251,6 +251,7 @@ h2 {
 .content-grid[data-active-page='waterOperations'] > .panel,
 .content-grid[data-active-page='energyPerformance'] > .panel,
 .content-grid[data-active-page='safetyEmergency'] > .panel,
+.content-grid[data-active-page='platformGovernance'] > .panel,
 .content-grid[data-active-page='spatial'] > .panel,
 .content-grid[data-active-page='evidence'] > .panel {
   display: none;
@@ -267,6 +268,7 @@ h2 {
 .content-grid[data-active-page='waterOperations'] > .water-operations-panel,
 .content-grid[data-active-page='energyPerformance'] > .energy-performance-panel,
 .content-grid[data-active-page='safetyEmergency'] > .safety-emergency-panel,
+.content-grid[data-active-page='platformGovernance'] > .platform-governance-panel,
 .content-grid[data-active-page='spatial'] > .spatial-panel,
 .content-grid[data-active-page='spatial'] > .alert-panel,
 .content-grid[data-active-page='spatial'] > .team-panel,
@@ -293,6 +295,7 @@ h2 {
 .water-operations-panel,
 .energy-performance-panel,
 .safety-emergency-panel,
+.platform-governance-panel,
 .spatial-panel,
 .alert-panel,
 .module-panel,

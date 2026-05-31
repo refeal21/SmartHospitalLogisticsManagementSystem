@@ -107,6 +107,34 @@ type TeamLoad = {
   recommendation: string
 }
 
+type FeatureEvidence = {
+  featureName: string
+  sources: string[]
+  evidenceSummary: string
+}
+
+type CustomerDataSystem = {
+  major: string
+  subsystems: string[]
+  sensors: string[]
+  locations: string[]
+  dataFields: string[]
+  desiredData: string[]
+  roles: string[]
+  endpoints: string[]
+}
+
+type CompetitorModule = {
+  name: string
+  featureAreas: string[]
+}
+
+type ImplementationPhase = {
+  order: number
+  name: string
+  capabilities: string[]
+}
+
 type LogisticsBlueprint = {
   pptReportedPrimaryModuleTotal: number
   pptReportedSecondaryItemTotal: number
@@ -115,6 +143,10 @@ type LogisticsBlueprint = {
   workflows: LogisticsWorkflow[]
   workbenchMetrics: WorkbenchMetric[]
   teamLoads: TeamLoad[]
+  featureEvidence: FeatureEvidence[]
+  customerDataSystems: CustomerDataSystem[]
+  competitorModules: CompetitorModule[]
+  implementationPhases: ImplementationPhase[]
 }
 
 const locations = {
@@ -167,7 +199,7 @@ const localDashboard: OperationsDashboard = {
     {
       assetCode: 'WASTE-F1-01',
       name: '医废暂存间负压设备',
-      system: '医疗废物',
+      system: '医疗废弃物',
       location: locations.waste,
       status: 'Fault',
       lastSignalAt: '2026-05-30T09:25:00+08:00',
@@ -242,7 +274,7 @@ const localBlueprint: LogisticsBlueprint = {
     { code: 'FACILITY', name: '设备设施', items: ['设备台账', '巡检保养', '维修记录', '备件库存', '电梯专项'] },
     { code: 'SPATIAL', name: 'BIM 空间', items: ['空间台账', '楼层视图', '设备点位', '告警点位', '工单点位'] },
     { code: 'ENVIRONMENT', name: '环境监管', items: ['环境点位', '预警池', '报警策略', '医废处置', '智慧卫生间'] },
-    { code: 'MANAGEMENT', name: '综合管理', items: ['质量标准', '合同管理', '考核管理', '人员班组', '运营分析', '能耗成本', '碳排双控'] },
+    { code: 'MANAGEMENT', name: '综合管理', items: ['质量标准', '合同管理', '考核管理', '人员班组', '运营分析', '能耗成本'] },
     { code: 'GOVERNANCE', name: '系统治理', items: ['角色权限', '流程配置', 'SLA 配置', '字典配置', '审计日志'] },
   ],
   featureGroups: [
@@ -268,7 +300,7 @@ const localBlueprint: LogisticsBlueprint = {
       domain: 'Environment',
       primaryModuleCount: 3,
       secondaryItemCount: 23,
-      modules: ['室内外环境管理', '智慧卫生间管理', '医疗废物收集处置管理'],
+      modules: ['室内外环境管理', '智慧卫生间管理', '医疗废弃物收集处置管理'],
     },
     {
       code: 'INTEGRATED',
@@ -295,6 +327,126 @@ const localBlueprint: LogisticsBlueprint = {
     { teamName: '综合维修班', domain: '一站式服务', activeTasks: 18, capacity: 24, recommendation: '可承接一般维修与巡检工单' },
     { teamName: '电梯维保组', domain: '设备设施', activeTasks: 6, capacity: 8, recommendation: '保留困人事件应急余量' },
     { teamName: '环境监管班组', domain: '环境监管', activeTasks: 11, capacity: 12, recommendation: '医废负压告警优先派工' },
+  ],
+  featureEvidence: [
+    { featureName: '个人工作台', sources: ['中科医信'], evidenceSummary: '竞品明确工作台、待办、消息、工作日历和应用入口，作为日常运营起点。' },
+    { featureName: '工单全流程管理', sources: ['中科医信', 'PPT'], evidenceSummary: '竞品给出报修、派单、接单、挂单、转单、完工、验收、评价；PPT要求一站式服务闭环。' },
+    { featureName: '供配电监测', sources: ['北建院', '中科医信', 'PPT'], evidenceSummary: '客户数据包含电压、电流、功率、功率因数、频率、电度、谐波；竞品有供配电监测专项。' },
+    { featureName: '暖通冷热站监测', sources: ['北建院', '中科医信', 'PPT'], evidenceSummary: '客户数据包含冷源、热源、空调水、新风、净化空调和医气相关点位。' },
+    { featureName: '医疗废弃物管理', sources: ['中科医信', 'PPT'], evidenceSummary: '竞品覆盖收集、暂存站、扎带、全生命周期监管；PPT环境监管域要求医废处置。' },
+    { featureName: '可视化空间运维', sources: ['中科医信', 'PPT'], evidenceSummary: '竞品有建筑空间、平面图、空间使用；PPT明确 BIM 空间底座。' },
+  ],
+  customerDataSystems: [
+    {
+      major: '结构健康系统',
+      subsystems: ['沉降传感器', '位移传感器', '应变计传感器', '温度监测传感器', '强震仪'],
+      sensors: ['沉降传感器', '位移传感器', '应变计', '温度监测传感器'],
+      locations: ['结构监测点位'],
+      dataFields: ['院区', '楼号', '楼层', '空间编号', '设备编号', '时间', '数值'],
+      desiredData: ['结构位移', '沉降', '应变', '温度', '震动'],
+      roles: ['总务处管理者', '医院管理者', '第三方服务方'],
+      endpoints: ['控制室电脑端', '移动端'],
+    },
+    {
+      major: '强电系统',
+      subsystems: ['变电室智能配电系统', '多功能远传电表系统', '电力系统', '照明', '防雷接地'],
+      sensors: ['多功能测量仪表', '电能质量仪表', '单相/三相多功能电表'],
+      locations: ['变电室低压进线及馈出回路', '楼层配电柜', '配电分盘'],
+      dataFields: ['电压', '电流', '有功功率', '无功功率', '功率因数', '频率', '电度', '谐波'],
+      desiredData: ['温湿度', '浪涌保护器运行状态', '照明设备数量', '光照度'],
+      roles: ['电工班工作人员', '总务处管理者', '医院管理者'],
+      endpoints: ['控制室电脑端', '移动端'],
+    },
+    {
+      major: '供暖空调系统',
+      subsystems: ['热源及供暖水系统', '通风系统', '冷源及空调水系统', '空气处理机组', '新风机组', '净化空调系统', '医用气体系统'],
+      sensors: ['温湿度传感器', 'CO2浓度传感器', '压差传感器', '空气质量传感器'],
+      locations: ['送风口', '水盘管处', '室内点位', '过滤器处', '送风机处'],
+      dataFields: ['供回水温', '压力', '流量', '能耗', '电流', '电压', '启停状态', '故障状态'],
+      desiredData: ['冷源状态', '空调水系统状态', '净化空调状态', '医气压力与流量', '室内空气质量'],
+      roles: ['暖通班工作人员', '总务处管理者', '医院管理者', '第三方服务方'],
+      endpoints: ['控制室电脑端', '移动端'],
+    },
+    {
+      major: '给排水系统',
+      subsystems: ['给水系统', '热水系统', '中水系统', '排水系统', '消防水', '饮用水系统', '供油系统'],
+      sensors: ['压力传感器', '液位传感器', '流量计', '水质传感器'],
+      locations: ['泵房', '水箱', '管网', '污水处理站'],
+      dataFields: ['压力', '流量', '液位', '水温', '水质', '泵运行状态', '故障状态'],
+      desiredData: ['医疗废水监测', '污水系统监测', '供水安全保障', '设备轮换运行'],
+      roles: ['给排水班工作人员', '总务处管理者', '医院管理者'],
+      endpoints: ['控制室电脑端', '移动端'],
+    },
+    {
+      major: '火灾自动报警及联动控制系统',
+      subsystems: ['火灾自动报警', '电气火灾监控系统', '防火门监控', '可燃气体探测报警系统'],
+      sensors: ['烟感', '温感', '可燃气体探测器', '电气火灾监测设备'],
+      locations: ['消防控制室', '楼层公共区', '设备间'],
+      dataFields: ['报警状态', '设备状态', '联动状态', '故障状态', '时间'],
+      desiredData: ['消防报警联动', '设备故障', '防火门状态', '可燃气体浓度'],
+      roles: ['消防值班人员', '总务处管理者', '医院管理者'],
+      endpoints: ['控制室电脑端', '移动端'],
+    },
+    {
+      major: '智能化系统',
+      subsystems: ['智能化集成系统', '建筑设备管理系统', '公共安全系统', '信息设施系统', '机房工程'],
+      sensors: ['摄像机', '门禁', '楼控网关', '网络设备', '机房环境传感器'],
+      locations: ['安防机房', '弱电机房', '楼宇设备间', '公共区域'],
+      dataFields: ['设备在线状态', '报警状态', '运行参数', '事件记录', '空间定位'],
+      desiredData: ['系统集成数据', '安防事件', '楼控状态', '机房环境'],
+      roles: ['信息化管理者', '保卫人员', '总务处管理者', '医院管理者'],
+      endpoints: ['控制室电脑端', '移动端'],
+    },
+    {
+      major: '机器人',
+      subsystems: ['变电室巡检机器人', '安防巡检机器人', '配送机器人'],
+      sensors: ['机器人本体传感器', '摄像头', '定位模块', '任务采集'],
+      locations: ['变电室', '公共安防区域', '配送路线'],
+      dataFields: ['任务状态', '定位', '巡检结果', '异常告警', '配送状态'],
+      desiredData: ['机器人任务', '异常识别', '路线执行', '配送完成率'],
+      roles: ['运维人员', '保卫人员', '配送班组', '医院管理者'],
+      endpoints: ['移动端', '控制室电脑端'],
+    },
+    {
+      major: '其他物联设备',
+      subsystems: ['智慧卫生间', '智慧食堂系统', '无人零售物联系统'],
+      sensors: ['厕位传感器', '空气质量传感器', '耗材传感器', '油烟监测', '食安监测'],
+      locations: ['卫生间', '食堂后厨', '公共服务区'],
+      dataFields: ['厕位状态', '空气质量', '耗材余量', '油烟状态', '设备运行状态'],
+      desiredData: ['智慧卫生间服务状态', '食安强化监测', '无人零售状态'],
+      roles: ['保洁班组', '食堂管理人员', '总务处管理者', '医院管理者'],
+      endpoints: ['移动端', '控制室电脑端'],
+    },
+  ],
+  competitorModules: [
+    { name: '智慧医院运行保障系统基础服务模块', featureAreas: ['个人工作台', '用户管理', '角色权限管理', '统一登录管理', '工单管理', '消息推送管理', '日志管理'] },
+    { name: '可视化数据驾驶舱管理系统', featureAreas: ['综合服务', '品质管理', '设备安全', '能耗管理'] },
+    { name: '智能移动应用终端系统', featureAreas: ['消息管理', '一站式服务管理', '统一报警管理', '设备运维管理', '数据统计分析'] },
+    { name: '智能基础运行资产台账管理系统', featureAreas: ['资产分类管理', '资产台账管理', '资产维修管理'] },
+    { name: '基础运行设备设施使用运维系统', featureAreas: ['工作日历', '消息管理', '报修管理', '巡检/保养管理', '计划管理'] },
+    { name: '后勤供料配件耗材库智能管理系统', featureAreas: ['基础信息管理', '仓库管理', '采购决策', '耗材精细化', '统计分析'] },
+    { name: '智慧电梯运行监测管理系统', featureAreas: ['运行实时监测', '报警管理', '可视报警求助', '统计分析'] },
+    { name: '医用气体预警监测管理系统', featureAreas: ['氧气系统监测', '压缩空气系统监测', '负压真空系统监测', '特殊气体汇流排监测', '报警接收与处置'] },
+    { name: '供配电监测管理系统', featureAreas: ['运行总览', '电力监测', '数据报表'] },
+    { name: '给排水监测管理系统', featureAreas: ['运行总览', '运行监测', 'APP远程监控'] },
+    { name: '冷热站监测管理系统', featureAreas: ['运行总览', '运行监测', 'App远程监控'] },
+    { name: '环境质量监测管理系统', featureAreas: ['运行总览', '运行监测', '监测分区配置', '环境区间配置'] },
+    { name: '污水站监测管理系统', featureAreas: ['实时监测', '报警处理'] },
+    { name: '智能一站式服务综合管理系统', featureAreas: ['一站式服务调度中心', '维修管理', '移动报修', '工程仓库管理', '报表管理', '大屏管理'] },
+    { name: '智慧保洁服务管理系统', featureAreas: ['工作日历', '任务概览', '计划管理', '任务管理', '应急保洁', '统计分析管理'] },
+    { name: '医疗废弃物综合管理系统', featureAreas: ['收集总览', '数据可视化大屏', '医废全生命周期监管', '暂存站监管', '医废扎带管理', '统计分析'] },
+    { name: '可视化空间运维管理系统', featureAreas: ['建筑空间管理', '空间平面图', '空间使用管理', '空间统计分析', '空间租赁管理'] },
+    { name: '综合能耗智能监管系统', featureAreas: ['用能总览', '实时监控', '告警管理', '用能分析', '报表管理', '成本管理', '配置管理'] },
+    { name: '后勤业务集成管理系统', featureAreas: ['业务集成', '数据联动', '统一入口'] },
+    { name: '服务品质集成管理系统', featureAreas: ['服务品质', '考核评价', '报告分析'] },
+  ],
+  implementationPhases: [
+    { order: 1, name: '基础平台与工作台', capabilities: ['个人工作台', '消息', '待办', '权限', '登录日志'] },
+    { order: 2, name: '一站式服务与工单', capabilities: ['报修', '派单', '接单', '挂单', '转单', '完工', '验收', '评价', '超时提醒'] },
+    { order: 3, name: '资产台账与巡检保养', capabilities: ['设备设施', '空间', '岗位', '人员', '计划工单', '巡检/保养'] },
+    { order: 4, name: '客户物联数据接入模型', capabilities: ['强电', '暖通', '给排水', '医气', '环境', '污水', '时序字段'] },
+    { order: 5, name: '专项系统', capabilities: ['电梯', '医气', '供配电', '给排水', '冷热站', '环境质量', '污水站', '医废', '能耗'] },
+    { order: 6, name: '综合管理', capabilities: ['合同', '质量', '考核', '服务品质', '报表', '运营分析'] },
   ],
 }
 
@@ -524,6 +676,82 @@ function App() {
                     {group.modules.map((module) => (
                       <span key={module}>{module}</span>
                     ))}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="panel evidence-panel">
+            <PanelHeader title="来源可追溯功能目录" meta="客户数据 > 竞品功能树 > PPT 架构" />
+            <div className="source-grid">
+              {blueprint.featureEvidence.map((item) => (
+                <article className="source-card" key={item.featureName}>
+                  <div className="source-card-head">
+                    <strong>{item.featureName}</strong>
+                    <div className="source-tags">
+                      {item.sources.map((sourceName) => (
+                        <span key={sourceName}>{sourceName}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <p>{item.evidenceSummary}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="panel catalog-panel">
+            <PanelHeader title="北建院客户数据目录" meta="系统 / 传感器 / 字段 / 角色 / 使用端" />
+            <div className="catalog-grid">
+              {blueprint.customerDataSystems.map((system) => (
+                <article className="catalog-card" key={system.major}>
+                  <strong>{system.major}</strong>
+                  <span>{system.subsystems.slice(0, 4).join('、')}</span>
+                  <dl>
+                    <div>
+                      <dt>字段</dt>
+                      <dd>{system.dataFields.slice(0, 6).join('、')}</dd>
+                    </div>
+                    <div>
+                      <dt>角色</dt>
+                      <dd>{system.roles.slice(0, 3).join('、')}</dd>
+                    </div>
+                    <div>
+                      <dt>端</dt>
+                      <dd>{system.endpoints.join('、')}</dd>
+                    </div>
+                  </dl>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="panel competitor-panel">
+            <PanelHeader title="竞品功能颗粒度" meta="20 个成熟后勤模块拆成功能对象" />
+            <div className="competitor-grid">
+              {blueprint.competitorModules.map((module) => (
+                <article className="competitor-card" key={module.name}>
+                  <strong>{module.name}</strong>
+                  <div className="module-tags">
+                    {module.featureAreas.slice(0, 6).map((feature) => (
+                      <span key={feature}>{feature}</span>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="panel phase-panel">
+            <PanelHeader title="V1实施顺序" meta="先业务闭环，再专项扩展" />
+            <div className="phase-list">
+              {blueprint.implementationPhases.map((phase) => (
+                <article className="phase-card" key={phase.order}>
+                  <span>{phase.order}</span>
+                  <div>
+                    <strong>{phase.name}</strong>
+                    <p>{phase.capabilities.join('、')}</p>
                   </div>
                 </article>
               ))}

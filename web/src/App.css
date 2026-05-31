@@ -217,7 +217,11 @@ h2 {
 
 .dispatch-panel,
 .module-panel,
-.workflow-panel {
+.workflow-panel,
+.evidence-panel,
+.catalog-panel,
+.competitor-panel,
+.phase-panel {
   grid-column: span 2;
 }
 
@@ -496,6 +500,132 @@ button {
   line-height: 1.7;
 }
 
+.source-grid,
+.catalog-grid,
+.competitor-grid,
+.phase-list {
+  display: grid;
+  gap: 10px;
+}
+
+.source-grid,
+.catalog-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.competitor-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.source-card,
+.catalog-card,
+.competitor-card,
+.phase-card {
+  border: 1px solid #dfeaf2;
+  border-radius: 5px;
+  padding: 10px;
+  min-width: 0;
+}
+
+.source-card-head {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 7px;
+}
+
+.source-card strong,
+.catalog-card strong,
+.competitor-card strong,
+.phase-card strong {
+  display: block;
+  line-height: 1.35;
+}
+
+.source-card p,
+.phase-card p {
+  color: #5c7489;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.source-tags,
+.module-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.source-tags span {
+  border-radius: 999px;
+  background: #e8f3fb;
+  color: #12649b;
+  padding: 4px 7px;
+  font-size: 12px;
+}
+
+.catalog-card {
+  display: grid;
+  gap: 8px;
+}
+
+.catalog-card > span {
+  color: #4d6680;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.catalog-card dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.catalog-card div {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.catalog-card dt {
+  color: #1d6da8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.catalog-card dd {
+  margin: 0;
+  color: #637b90;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.competitor-card {
+  display: grid;
+  gap: 9px;
+}
+
+.phase-list {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.phase-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+}
+
+.phase-card > span {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #1f74b7;
+  color: #ffffff;
+  font-weight: 800;
+}
+
 @media (max-width: 1180px) {
   .admin-shell {
     grid-template-columns: 1fr;
@@ -521,8 +651,19 @@ button {
 
   .dispatch-panel,
   .module-panel,
-  .workflow-panel {
+  .workflow-panel,
+  .evidence-panel,
+  .catalog-panel,
+  .competitor-panel,
+  .phase-panel {
     grid-column: span 1;
+  }
+
+  .source-grid,
+  .catalog-grid,
+  .competitor-grid,
+  .phase-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -547,7 +688,11 @@ button {
   .nav-groups,
   .metric-strip,
   .module-grid,
-  .workflow-grid {
+  .workflow-grid,
+  .source-grid,
+  .catalog-grid,
+  .competitor-grid,
+  .phase-list {
     grid-template-columns: 1fr;
   }
 

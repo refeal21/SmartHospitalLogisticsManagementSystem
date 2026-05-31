@@ -143,6 +143,30 @@ public sealed record TeamLoad(
     int Capacity,
     string Recommendation);
 
+public sealed record FeatureEvidence(
+    string FeatureName,
+    IReadOnlyList<string> Sources,
+    string EvidenceSummary);
+
+public sealed record CustomerDataSystem(
+    string Major,
+    IReadOnlyList<string> Subsystems,
+    IReadOnlyList<string> Sensors,
+    IReadOnlyList<string> Locations,
+    IReadOnlyList<string> DataFields,
+    IReadOnlyList<string> DesiredData,
+    IReadOnlyList<string> Roles,
+    IReadOnlyList<string> Endpoints);
+
+public sealed record CompetitorModule(
+    string Name,
+    IReadOnlyList<string> FeatureAreas);
+
+public sealed record ImplementationPhase(
+    int Order,
+    string Name,
+    IReadOnlyList<string> Capabilities);
+
 public sealed record LogisticsBlueprint(
     int PptReportedPrimaryModuleTotal,
     int PptReportedSecondaryItemTotal,
@@ -150,4 +174,8 @@ public sealed record LogisticsBlueprint(
     IReadOnlyList<LogisticsFeatureGroup> FeatureGroups,
     IReadOnlyList<LogisticsWorkflow> Workflows,
     IReadOnlyList<WorkbenchMetric> WorkbenchMetrics,
-    IReadOnlyList<TeamLoad> TeamLoads);
+    IReadOnlyList<TeamLoad> TeamLoads,
+    IReadOnlyList<FeatureEvidence> FeatureEvidence,
+    IReadOnlyList<CustomerDataSystem> CustomerDataSystems,
+    IReadOnlyList<CompetitorModule> CompetitorModules,
+    IReadOnlyList<ImplementationPhase> ImplementationPhases);

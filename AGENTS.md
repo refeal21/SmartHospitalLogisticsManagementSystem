@@ -2,7 +2,7 @@
 
 ## First Principle
 
-Build a powerful hospital logistics management system from zero to one. Do not build a demo shell. Every requirement, design, implementation, test, and repository action must serve real hospital logistics operations, BIM-based spatial operations, and long-term maintainability.
+Build a powerful hospital logistics management system from zero to one. Do not build a demo shell. Every requirement, design, implementation, test, and repository action must serve real hospital logistics operations, BIM-based spatial operations, and long-term maintainability. If context reaches the limit, rely on automatic context compaction and continue from the latest verifiable checkpoint instead of restarting.
 
 ## Source Material Policy
 
@@ -16,6 +16,7 @@ Build a powerful hospital logistics management system from zero to one. Do not b
 - Keep development vertical-slice oriented: product workflow, domain model, API contract, frontend workflow, tests.
 - Prefer stable, typed, auditable domain models over page-only mockups.
 - Treat BIM, IoT, work orders, assets, energy, security, emergency response, and external hospital systems as integration boundaries with adapters.
+- Feature details must be source-traceable. Priority order: customer research data, competitor function tree, PPT architecture, then AI supplementation only for glue and implementation decisions.
 
 ## Engineering Discipline
 

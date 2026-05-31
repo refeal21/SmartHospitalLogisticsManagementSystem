@@ -40,9 +40,17 @@ CLAUDE项目样例.md
 CODEx项目执行记忆.md
 /*.pptx
 /*.ppt
+/*.xlsx
+/*.xls
+/*.xmind
 /*.jpg
 /*.jpeg
 /*.png
+*.pptx
+*.ppt
+*.xlsx
+*.xls
+*.xmind
 internal-materials/
 source-materials/
 

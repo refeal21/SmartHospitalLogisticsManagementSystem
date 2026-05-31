@@ -23,12 +23,27 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
 
     private readonly List<AssetLifecycleEvent> _lifecycleEvents;
 
-    public AssetMaintenanceService()
+    private readonly IAssetMaintenancePersistence? _persistence;
+
+    public AssetMaintenanceService(IAssetMaintenancePersistence? persistence = null)
     {
-        _assets = BuildAssets().ToDictionary(asset => asset.AssetCode, StringComparer.OrdinalIgnoreCase);
-        _plans = BuildPlans().ToDictionary(plan => plan.PlanCode, StringComparer.OrdinalIgnoreCase);
-        _tasks = BuildTasks().ToDictionary(task => task.TaskNo, StringComparer.OrdinalIgnoreCase);
-        _lifecycleEvents = BuildLifecycleEvents().ToList();
+        _persistence = persistence;
+        var persisted = _persistence?.Load();
+        if (persisted is not null && (persisted.Assets.Count > 0 || persisted.Plans.Count > 0 || persisted.Tasks.Count > 0))
+        {
+            _assets = persisted.Assets.ToDictionary(asset => asset.AssetCode, StringComparer.OrdinalIgnoreCase);
+            _plans = persisted.Plans.ToDictionary(plan => plan.PlanCode, StringComparer.OrdinalIgnoreCase);
+            _tasks = persisted.Tasks.ToDictionary(task => task.TaskNo, StringComparer.OrdinalIgnoreCase);
+            _lifecycleEvents = persisted.LifecycleEvents.ToList();
+        }
+        else
+        {
+            _assets = BuildAssets().ToDictionary(asset => asset.AssetCode, StringComparer.OrdinalIgnoreCase);
+            _plans = BuildPlans().ToDictionary(plan => plan.PlanCode, StringComparer.OrdinalIgnoreCase);
+            _tasks = BuildTasks().ToDictionary(task => task.TaskNo, StringComparer.OrdinalIgnoreCase);
+            _lifecycleEvents = BuildLifecycleEvents().ToList();
+            PersistSeedData();
+        }
     }
 
     public AssetMaintenanceBoard GetMaintenanceBoard()
@@ -99,6 +114,9 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
         var generatedWorkOrder = command.Outcome == MaintenanceOutcome.Abnormal && command.ConvertToWorkOrder
             ? BuildGeneratedWorkOrder(task, completedAt)
             : null;
+        var lifecycleEventType = command.Outcome == MaintenanceOutcome.Abnormal
+            ? "异常转工单"
+            : "完成巡检";
 
         var updatedTask = task with
         {
@@ -109,17 +127,16 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
             CompletedBy = command.Operator,
             WorkOrderNo = generatedWorkOrder?.WorkOrderNo
         };
-        _tasks[task.TaskNo] = updatedTask;
-
-        var lifecycleEventType = command.Outcome == MaintenanceOutcome.Abnormal
-            ? "异常转工单"
-            : "完成巡检";
-        _lifecycleEvents.Add(new AssetLifecycleEvent(
+        var lifecycleEvent = new AssetLifecycleEvent(
             completedAt,
             task.AssetCode,
             lifecycleEventType,
             command.Operator,
-            command.Remark));
+            command.Remark);
+
+        _persistence?.SaveTaskCompletion(updatedTask, lifecycleEvent);
+        _tasks[task.TaskNo] = updatedTask;
+        _lifecycleEvents.Add(lifecycleEvent);
 
         return new MaintenanceTaskOperationResult(true, null, updatedTask, generatedWorkOrder);
     }
@@ -146,9 +163,12 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
             (int)assets.Average(asset => asset.HealthScore));
     }
 
-    private static MaintenanceGeneratedWorkOrder BuildGeneratedWorkOrder(MaintenanceTask task, DateTimeOffset createdAt)
+    private MaintenanceGeneratedWorkOrder BuildGeneratedWorkOrder(MaintenanceTask task, DateTimeOffset createdAt)
     {
         var workOrderNo = $"WO-MT-{task.TaskNo.Replace("MT-", string.Empty, StringComparison.OrdinalIgnoreCase)}";
+        var location = _assets.TryGetValue(task.AssetCode, out var asset)
+            ? asset.Location
+            : BuildAssets().Single(asset => asset.AssetCode == task.AssetCode).Location;
 
         return new MaintenanceGeneratedWorkOrder(
             workOrderNo,
@@ -156,7 +176,7 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
             "设备巡检异常",
             task.Priority,
             WorkOrderStatus.New,
-            BuildAssets().Single(asset => asset.AssetCode == task.AssetCode).Location,
+            location,
             task.ResponsibleTeam,
             createdAt);
     }
@@ -373,4 +393,32 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
             ["中科医信", "PPT"],
             "资产台账必须绑定楼栋、楼层、房间和 BIM 构件，支持从空间定位进入巡检与维修。")
     ];
+
+    private void PersistSeedData()
+    {
+        if (_persistence is null)
+        {
+            return;
+        }
+
+        foreach (var asset in _assets.Values)
+        {
+            _persistence.SaveAsset(asset);
+        }
+
+        foreach (var plan in _plans.Values)
+        {
+            _persistence.SavePlan(plan);
+        }
+
+        foreach (var task in _tasks.Values)
+        {
+            _persistence.SaveTask(task);
+        }
+
+        foreach (var lifecycleEvent in _lifecycleEvents)
+        {
+            _persistence.SaveLifecycleEvent(lifecycleEvent);
+        }
+    }
 }

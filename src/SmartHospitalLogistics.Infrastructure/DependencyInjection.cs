@@ -18,6 +18,16 @@ public static class DependencyInjection
 
             return new SqliteWorkOrderPersistence(dbPath);
         });
+        services.AddSingleton<IAssetMaintenancePersistence>(_ =>
+        {
+            var dbPath = Environment.GetEnvironmentVariable("SMART_HOSPITAL_LOGISTICS_ASSET_DB");
+            if (string.IsNullOrWhiteSpace(dbPath))
+            {
+                dbPath = Path.Combine(AppContext.BaseDirectory, "data", "smart-hospital-assets.db");
+            }
+
+            return new SqliteAssetMaintenancePersistence(dbPath);
+        });
         services.AddSingleton<IWorkOrderDispatchService, WorkOrderDispatchService>();
         services.AddSingleton<IAssetMaintenanceService, AssetMaintenanceService>();
         services.AddSingleton<IIotIntegrationService, IotIntegrationService>();

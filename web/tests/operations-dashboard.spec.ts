@@ -5,11 +5,11 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
     await page.goto('/')
 
     await expect(page.getByRole('heading', { name: '医院后勤管理工作台' })).toBeVisible()
-    await expect(page.getByRole('link', { name: '服务受理' })).toBeVisible()
-    await expect(page.getByRole('link', { name: '工单调度' })).toBeVisible()
-    await expect(page.getByRole('link', { name: '设备台账' })).toBeVisible()
-    await expect(page.getByRole('link', { name: '预警池' })).toBeVisible()
-    await expect(page.getByRole('link', { name: '合同管理' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '服务受理' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '工单调度' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '设备台账' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '预警池' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '合同管理' })).toBeVisible()
 
     await expect(page.getByRole('heading', { name: '工单调度中心' })).toBeVisible()
     await expect(page.getByText('WO-20260530-0001')).toBeVisible()
@@ -107,12 +107,36 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
     await expect(page.getByText('MEDGAS-O2-8F / pressure')).toBeVisible()
   })
 
+  test('左侧菜单切换到聚焦业务页面而不是所有模块堆叠', async ({ page }) => {
+    await page.goto('/')
+
+    await page.getByRole('button', { name: '设备台账' }).click()
+    await expect(page.getByRole('heading', { name: '资产台账与巡检保养' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '工单调度中心' })).toBeHidden()
+
+    await page.getByRole('button', { name: '环境点位' }).click()
+    await expect(page.getByRole('heading', { name: '客户物联点位接入' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '资产台账与巡检保养' })).toBeHidden()
+
+    await page.getByRole('button', { name: '工单调度' }).click()
+    await expect(page.getByRole('heading', { name: '工单调度中心' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '客户物联点位接入' })).toBeHidden()
+  })
+
+  test('直接打开带 hash 的业务链接时同步当前页面', async ({ page }) => {
+    await page.goto('/#工单调度')
+
+    await expect(page.getByRole('button', { name: '工单调度' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('heading', { name: '工单调度工作台' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '资产台账与巡检保养' })).toBeHidden()
+  })
+
   test('移动端不出现横向溢出并保留核心办事入口', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/')
 
     await expect(page.getByRole('heading', { name: '医院后勤管理工作台' })).toBeVisible()
-    await expect(page.getByRole('link', { name: '工单调度' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '工单调度' })).toBeVisible()
     await expect(page.getByRole('heading', { name: '工单调度中心' })).toBeVisible()
     await expect(page.getByRole('heading', { name: '环境预警池' })).toBeVisible()
     await expect(page.getByRole('heading', { name: '来源可追溯功能目录' })).toBeVisible()

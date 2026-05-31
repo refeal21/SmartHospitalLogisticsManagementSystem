@@ -59,17 +59,26 @@
   font-size: 12px;
 }
 
-.nav-group a {
+.nav-group button {
+  width: 100%;
+  border: 0;
   color: #edf8ff;
   text-decoration: none;
   border-radius: 4px;
   padding: 7px 9px;
   font-size: 13px;
+  text-align: left;
   background: rgba(255, 255, 255, 0.08);
 }
 
-.nav-group a:hover {
+.nav-group button:hover {
   background: rgba(255, 255, 255, 0.16);
+}
+
+.nav-group button.active {
+  background: #ffffff;
+  color: #075f9d;
+  font-weight: 800;
 }
 
 .admin-main {
@@ -204,10 +213,55 @@ h2 {
   border-left-color: #22a9d6;
 }
 
+.page-context {
+  background: #ffffff;
+  border: 1px solid #d8e5ef;
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.page-context span {
+  display: block;
+  color: #5d7285;
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+
+.page-context p {
+  color: #536c82;
+  font-size: 13px;
+  line-height: 1.6;
+  margin-top: 5px;
+}
+
 .content-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.85fr);
   gap: 12px;
+}
+
+.content-grid[data-active-page='dispatch'] > .panel,
+.content-grid[data-active-page='assets'] > .panel,
+.content-grid[data-active-page='iot'] > .panel,
+.content-grid[data-active-page='spatial'] > .panel,
+.content-grid[data-active-page='evidence'] > .panel {
+  display: none;
+}
+
+.content-grid[data-active-page='dispatch'] > .dispatch-panel,
+.content-grid[data-active-page='assets'] > .asset-maintenance-panel,
+.content-grid[data-active-page='iot'] > .iot-panel,
+.content-grid[data-active-page='spatial'] > .spatial-panel,
+.content-grid[data-active-page='spatial'] > .alert-panel,
+.content-grid[data-active-page='spatial'] > .team-panel,
+.content-grid[data-active-page='evidence'] > .module-panel,
+.content-grid[data-active-page='evidence'] > .evidence-panel,
+.content-grid[data-active-page='evidence'] > .catalog-panel,
+.content-grid[data-active-page='evidence'] > .competitor-panel,
+.content-grid[data-active-page='evidence'] > .phase-panel,
+.content-grid[data-active-page='evidence'] > .workflow-panel {
+  display: block;
 }
 
 .panel {

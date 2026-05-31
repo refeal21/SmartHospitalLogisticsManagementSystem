@@ -402,6 +402,8 @@ type TelemetryIngestionResult = {
   notFound: boolean
 }
 
+type WorkspacePage = 'overview' | 'dispatch' | 'assets' | 'iot' | 'spatial' | 'evidence'
+
 const locations = {
   lobby: {
     campus: '同仁亦庄院区',
@@ -926,7 +928,82 @@ const telemetryRiskLabels: Record<TelemetryRiskLevel, string> = {
   Critical: '严重',
 }
 
+const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = {
+  overview: {
+    title: '后勤运营总览',
+    summary: '总览保留跨模块态势；具体办事请从左侧进入工单、资产、物联或 BIM 工作台。',
+  },
+  dispatch: {
+    title: '工单调度工作台',
+    summary: '聚焦一站式服务：工单池、派工建议、工单详情、状态流转和处理记录。',
+  },
+  assets: {
+    title: '资产巡检工作台',
+    summary: '聚焦设备设施：资产台账、BIM 位置、巡检任务、异常转工单和生命周期记录。',
+  },
+  iot: {
+    title: '物联点位工作台',
+    summary: '聚焦客户调研数据：系统分类、点位目录、时序字段、阈值规则和异常读数。',
+  },
+  spatial: {
+    title: 'BIM 空间运维工作台',
+    summary: '聚焦空间定位：设备、告警、工单和班组负载在同一空间语境里联动。',
+  },
+  evidence: {
+    title: '来源追溯与建设蓝图',
+    summary: '查看 PPT、北建院客户数据和竞品功能树如何约束系统能力边界。',
+  },
+}
+
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5248'
+
+function pageFromMenuItem(item: string): WorkspacePage {
+  if (item.includes('首页') || item.includes('待办') || item.includes('风险')) {
+    return 'overview'
+  }
+
+  if (item.includes('服务') || item.includes('工单') || item.includes('任务') || item.includes('验收')) {
+    return 'dispatch'
+  }
+
+  if (
+    item.includes('设备') ||
+    item.includes('巡检') ||
+    item.includes('维修') ||
+    item.includes('备件') ||
+    item.includes('电梯') ||
+    item.includes('暖通') ||
+    item.includes('给排水') ||
+    item.includes('医气')
+  ) {
+    return 'assets'
+  }
+
+  if (
+    item.includes('环境') ||
+    item.includes('预警') ||
+    item.includes('报警') ||
+    item.includes('医废') ||
+    item.includes('卫生间')
+  ) {
+    return 'iot'
+  }
+
+  if (item.includes('BIM') || item.includes('空间') || item.includes('楼层') || item.includes('点位')) {
+    return 'spatial'
+  }
+
+  return 'evidence'
+}
+
+function initialMenuItem(): string {
+  if (typeof window === 'undefined') {
+    return '后勤首页'
+  }
+
+  const hashValue = decodeURIComponent(window.location.hash.replace(/^#/, ''))
+  return hashValue || '后勤首页'
+}
 
 function App() {
   const [dashboard, setDashboard] = useState(localDashboard)
@@ -940,6 +1017,20 @@ function App() {
   const [selectedIotPoint, setSelectedIotPoint] = useState(() => buildLocalIotPointDetail('MEDGAS-O2-8F'))
   const [lastTelemetryResult, setLastTelemetryResult] = useState<TelemetryIngestionResult | null>(null)
   const [source, setSource] = useState<'api' | 'local'>('local')
+  const [activeMenuItem, setActiveMenuItem] = useState(() => initialMenuItem())
+  const [activePage, setActivePage] = useState<WorkspacePage>(() => pageFromMenuItem(initialMenuItem()))
+
+  useEffect(() => {
+    function syncPageFromHash() {
+      const menuItem = initialMenuItem()
+      setActiveMenuItem(menuItem)
+      setActivePage(pageFromMenuItem(menuItem))
+    }
+
+    syncPageFromHash()
+    window.addEventListener('hashchange', syncPageFromHash)
+    return () => window.removeEventListener('hashchange', syncPageFromHash)
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -1028,6 +1119,15 @@ function App() {
   const selectedAssetDueTasks = assetBoard.dueTasks.filter(
     (task) => task.assetCode === selectedAssetDetail.asset.assetCode,
   )
+  const pageProfile = pageProfiles[activePage]
+
+  function openWorkspacePage(item: string) {
+    const nextPage = pageFromMenuItem(item)
+    setActiveMenuItem(item)
+    setActivePage(nextPage)
+    window.history.replaceState(null, '', `#${encodeURIComponent(item)}`)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   async function loadDetail(workOrderNo: string, forceApi = false) {
     if (source === 'api' || forceApi) {
@@ -1133,7 +1233,16 @@ function App() {
         body: JSON.stringify({ teamName, dispatcher: '调度员', remark: '按SLA风险和专业班组派工' }),
       })
       if (response.ok) {
-        applyDetail((await response.json()) as WorkOrderDetail)
+        applyDetail(
+          withTimelineEntry(
+            (await response.json()) as WorkOrderDetail,
+            '派工',
+            '调度员',
+            '按SLA风险和专业班组派工',
+            'Dispatched',
+            teamName,
+          ),
+        )
         return
       }
     }
@@ -1195,6 +1304,39 @@ function App() {
         order.workOrderNo === detail.workOrder.workOrderNo ? detail.workOrder : order,
       ),
     }))
+  }
+
+  function withTimelineEntry(
+    detail: WorkOrderDetail,
+    action: string,
+    operator: string,
+    remark: string,
+    nextStatus: WorkOrderStatus,
+    responsibleTeam = detail.workOrder.responsibleTeam,
+  ): WorkOrderDetail {
+    if (detail.timeline.some((entry) => entry.action === action)) {
+      return detail
+    }
+
+    return {
+      ...detail,
+      workOrder: {
+        ...detail.workOrder,
+        status: nextStatus,
+        responsibleTeam,
+      },
+      timeline: [
+        ...detail.timeline,
+        {
+          occurredAt: new Date().toISOString(),
+          operator,
+          action,
+          fromStatus: detail.workOrder.status,
+          toStatus: nextStatus,
+          remark,
+        },
+      ],
+    }
   }
 
   function applyMaintenanceResult(result: MaintenanceTaskOperationResult) {
@@ -1275,9 +1417,15 @@ function App() {
             <section className="nav-group" key={group.code}>
               <p>{group.name}</p>
               {group.items.map((item) => (
-                <a href={`#${item}`} key={item}>
+                <button
+                  aria-pressed={activeMenuItem === item}
+                  className={activeMenuItem === item ? 'active' : ''}
+                  key={item}
+                  type="button"
+                  onClick={() => openWorkspacePage(item)}
+                >
                   {item}
-                </a>
+                </button>
               ))}
             </section>
           ))}
@@ -1317,7 +1465,15 @@ function App() {
           </article>
         </section>
 
-        <section className="content-grid">
+        <section className="page-context">
+          <div>
+            <span>当前业务页</span>
+            <h2>{pageProfile.title}</h2>
+            <p>{pageProfile.summary}</p>
+          </div>
+        </section>
+
+        <section className="content-grid" data-active-page={activePage}>
           <section className="panel dispatch-panel">
             <PanelHeader title="工单调度中心" meta="按 SLA / 优先级 / 班组负载派工" />
             <div className="dispatch-workbench">

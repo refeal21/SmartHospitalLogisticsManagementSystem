@@ -1266,6 +1266,7 @@ function App() {
   const pageProfile = pageProfiles[activePage]
   const activeAlarm = selectedAlarm ?? alarmBoard.alarms[0] ?? null
   const selectedAlarmEvidence = alarmBoard.sourceEvidence.length > 0 ? alarmBoard.sourceEvidence : alarmSourceEvidence
+  const latestEvaluation = [...selectedDetail.timeline].reverse().find((entry) => entry.rating)
 
   function openWorkspacePage(item: string) {
     const nextPage = pageFromMenuItem(item)
@@ -1650,12 +1651,24 @@ function App() {
     applyLocalTransition('派工', '调度员', '按SLA风险和专业班组派工', 'Dispatched', teamName)
   }
 
-  async function transitionSelected(action: WorkOrderTransitionAction, label: string, nextStatus: WorkOrderStatus) {
+  async function transitionSelected(
+    action: WorkOrderTransitionAction,
+    label: string,
+    nextStatus: WorkOrderStatus,
+    rating?: number,
+  ) {
+    const operator =
+      action === 'Evaluate'
+        ? '服务对象'
+        : selectedDetail.workOrder.responsibleTeam && selectedDetail.workOrder.responsibleTeam !== '未派工'
+        ? selectedDetail.workOrder.responsibleTeam
+        : '调度员'
+
     if (source === 'api') {
       const response = await fetch(`${apiBase}/api/operations/work-orders/${selectedDetail.workOrder.workOrderNo}/transition`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, operator: '环境监管班组', remark: label }),
+        body: JSON.stringify({ action, operator, remark: label, rating }),
       })
       if (response.ok) {
         applyDetail((await response.json()) as WorkOrderDetail)
@@ -1663,7 +1676,7 @@ function App() {
       }
     }
 
-    applyLocalTransition(label, '环境监管班组', label, nextStatus)
+    applyLocalTransition(label, operator, label, nextStatus, undefined, rating)
   }
 
   function applyLocalTransition(
@@ -1672,6 +1685,7 @@ function App() {
     remark: string,
     nextStatus: WorkOrderStatus,
     responsibleTeam = selectedDetail.workOrder.responsibleTeam,
+    rating?: number,
   ) {
     const updatedOrder = {
       ...selectedDetail.workOrder,
@@ -1690,6 +1704,7 @@ function App() {
           fromStatus: selectedDetail.workOrder.status,
           toStatus: nextStatus,
           remark,
+          rating: rating ?? null,
         },
       ],
     }
@@ -2091,6 +2106,7 @@ function App() {
                   <h2>待验收工单</h2>
                   <p>{selectedDetail.workOrder.workOrderNo}</p>
                   <small>{selectedDetail.workOrder.title}</small>
+                  <small>状态：{statusLabels[selectedDetail.workOrder.status]}</small>
                 </section>
                 <section className="stage-card primary">
                   <h2>验收判断</h2>
@@ -2116,6 +2132,27 @@ function App() {
                 <section className="stage-card">
                   <h2>评价与投诉</h2>
                   <p>服务对象对已关闭或待评价工单进行评分、反馈和投诉标记。</p>
+                  <dl className="detail-list">
+                    <div>
+                      <dt>工单</dt>
+                      <dd>{selectedDetail.workOrder.workOrderNo}</dd>
+                    </div>
+                    <div>
+                      <dt>状态</dt>
+                      <dd>状态：{statusLabels[selectedDetail.workOrder.status]}</dd>
+                    </div>
+                    <div>
+                      <dt>评价</dt>
+                      <dd>{latestEvaluation?.rating ? `${latestEvaluation.rating} 星` : '待服务对象评价'}</dd>
+                    </div>
+                  </dl>
+                  <button
+                    disabled={selectedDetail.workOrder.status !== 'PendingEvaluation'}
+                    type="button"
+                    onClick={() => void transitionSelected('Evaluate', '评价', 'Closed', 5)}
+                  >
+                    五星评价并归档
+                  </button>
                 </section>
                 <section className="stage-card primary">
                   <h2>服务品质沉淀</h2>

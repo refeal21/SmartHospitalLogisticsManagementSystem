@@ -127,6 +127,30 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
     await expect(page.getByTestId('work-order-detail').getByText('状态：新建', { exact: true })).toBeVisible()
   })
 
+  test('服务请求工单可验收评价并归档闭环', async ({ page }) => {
+    await page.goto('/#服务受理')
+
+    await page.getByRole('button', { name: '生成待派工单' }).click()
+    await page.getByRole('button', { name: /派工到/ }).click()
+    await page.getByRole('button', { name: '接单处理' }).click()
+    await page.getByRole('button', { name: '完工' }).click()
+    await expect(page.getByTestId('work-order-detail')).toContainText('状态：待验收')
+
+    await page.getByRole('tab', { name: '验收回访' }).click()
+    await page.getByRole('button', { name: '验收通过' }).click()
+    await expect(page.getByTestId('acceptance-review-panel')).toContainText('状态：待评价')
+
+    await page.getByRole('tab', { name: '服务评价' }).click()
+    await expect(page.getByTestId('service-evaluation-panel')).toContainText(/WO-SR-/)
+    await page.getByRole('button', { name: '五星评价并归档' }).click()
+    await expect(page.getByTestId('service-evaluation-panel')).toContainText('状态：已关闭')
+    await expect(page.getByTestId('service-evaluation-panel')).toContainText('5 星')
+
+    await page.getByRole('tab', { name: '工单调度' }).click()
+    await expect(page.getByTestId('work-order-detail')).toContainText('状态：已关闭')
+    await expect(page.getByTestId('work-order-timeline')).toContainText('评价')
+  })
+
   test('服务受理优先调用API生成待派工单', async ({ page }) => {
     const corsHeaders = {
       'Access-Control-Allow-Headers': 'content-type',

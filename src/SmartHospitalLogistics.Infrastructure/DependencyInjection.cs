@@ -48,7 +48,9 @@ public static class DependencyInjection
 
             return new SqliteMonitoringAlarmPersistence(dbPath);
         });
-        services.AddSingleton<IWorkOrderDispatchService, WorkOrderDispatchService>();
+        services.AddSingleton<WorkOrderDispatchService>();
+        services.AddSingleton<IWorkOrderDispatchService>(provider => provider.GetRequiredService<WorkOrderDispatchService>());
+        services.AddSingleton<IWorkOrderIntakeService>(provider => provider.GetRequiredService<WorkOrderDispatchService>());
         services.AddSingleton<IAssetMaintenanceService, AssetMaintenanceService>();
         services.AddSingleton<MonitoringAlarmService>();
         services.AddSingleton<IMonitoringAlarmService>(provider => provider.GetRequiredService<MonitoringAlarmService>());

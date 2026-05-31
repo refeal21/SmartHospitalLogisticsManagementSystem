@@ -19,7 +19,9 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
             services.RemoveAll<IAssetMaintenancePersistence>();
             services.RemoveAll<IIotIntegrationPersistence>();
             services.RemoveAll<IMonitoringAlarmPersistence>();
+            services.RemoveAll<WorkOrderDispatchService>();
             services.RemoveAll<IWorkOrderDispatchService>();
+            services.RemoveAll<IWorkOrderIntakeService>();
             services.RemoveAll<IAssetMaintenanceService>();
             services.RemoveAll<MonitoringAlarmService>();
             services.RemoveAll<IMonitoringAlarmService>();
@@ -35,7 +37,9 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
             services.AddSingleton<IMonitoringAlarmPersistence>(_ =>
                 new SqliteMonitoringAlarmPersistence(Path.Combine(_dbDirectory, "alarms.db")));
 
-            services.AddSingleton<IWorkOrderDispatchService, WorkOrderDispatchService>();
+            services.AddSingleton<WorkOrderDispatchService>();
+            services.AddSingleton<IWorkOrderDispatchService>(provider => provider.GetRequiredService<WorkOrderDispatchService>());
+            services.AddSingleton<IWorkOrderIntakeService>(provider => provider.GetRequiredService<WorkOrderDispatchService>());
             services.AddSingleton<IAssetMaintenanceService, AssetMaintenanceService>();
             services.AddSingleton<MonitoringAlarmService>();
             services.AddSingleton<IMonitoringAlarmService>(provider => provider.GetRequiredService<MonitoringAlarmService>());

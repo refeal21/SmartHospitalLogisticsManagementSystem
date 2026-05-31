@@ -24,11 +24,13 @@ public sealed class MonitoringAlarmService : IMonitoringAlarmService
     private static readonly DateTimeOffset SeedTime = new(2026, 5, 30, 9, 30, 0, TimeSpan.FromHours(8));
     private readonly object _sync = new();
     private readonly IMonitoringAlarmPersistence? _persistence;
+    private readonly IWorkOrderIntakeService? _workOrderIntake;
     private readonly Dictionary<string, MonitoringAlarmEvent> _alarms;
 
-    public MonitoringAlarmService(IMonitoringAlarmPersistence? persistence = null)
+    public MonitoringAlarmService(IMonitoringAlarmPersistence? persistence = null, IWorkOrderIntakeService? workOrderIntake = null)
     {
         _persistence = persistence;
+        _workOrderIntake = workOrderIntake;
         var persisted = _persistence?.Load();
         _alarms = persisted?.Alarms.ToDictionary(alarm => alarm.AlarmNo, StringComparer.OrdinalIgnoreCase)
             ?? new Dictionary<string, MonitoringAlarmEvent>(StringComparer.OrdinalIgnoreCase);
@@ -125,7 +127,9 @@ public sealed class MonitoringAlarmService : IMonitoringAlarmService
 
             if (alarm.Status == MonitoringAlarmStatus.ConvertedToWorkOrder)
             {
-                return new MonitoringAlarmOperationResult(false, $"Alarm {alarmNo} has already been converted to a work order.", alarm);
+                return alarm.WorkOrderNo is { Length: > 0 }
+                    ? new MonitoringAlarmOperationResult(true, null, alarm)
+                    : new MonitoringAlarmOperationResult(false, $"Alarm {alarmNo} has already been converted to a work order.", alarm);
             }
 
             if (alarm.Status == MonitoringAlarmStatus.Closed)
@@ -133,11 +137,32 @@ public sealed class MonitoringAlarmService : IMonitoringAlarmService
                 return new MonitoringAlarmOperationResult(false, $"Alarm {alarmNo} is closed.", alarm);
             }
 
+            var workOrderNo = BuildAlarmWorkOrderNo(alarm);
+            if (_workOrderIntake is not null)
+            {
+                var creation = _workOrderIntake.CreateExternalWorkOrder(new CreateExternalWorkOrderCommand(
+                    workOrderNo,
+                    $"{alarm.Title}处置",
+                    "物联告警处置",
+                    alarm.RiskLevel == TelemetryRiskLevel.Critical ? Priority.Critical : Priority.High,
+                    alarm.Location,
+                    command.TargetTeam,
+                    alarm.TriggeredAt,
+                    alarm.TriggeredAt.AddHours(alarm.RiskLevel == TelemetryRiskLevel.Critical ? 1 : 2),
+                    command.Operator,
+                    command.Remark));
+
+                if (!creation.Succeeded || creation.Detail is null)
+                {
+                    return new MonitoringAlarmOperationResult(false, creation.ErrorMessage ?? "Failed to create work order.", alarm);
+                }
+            }
+
             var updated = alarm with
             {
                 Status = MonitoringAlarmStatus.ConvertedToWorkOrder,
                 ResponsibleTeam = command.TargetTeam,
-                WorkOrderNo = $"WO-ALM-{Sanitize(alarm.AlarmNo).Replace("ALM", string.Empty, StringComparison.OrdinalIgnoreCase)}",
+                WorkOrderNo = workOrderNo,
                 AcknowledgedBy = alarm.AcknowledgedBy ?? command.Operator,
                 AcknowledgedAt = alarm.AcknowledgedAt ?? SeedTime.AddMinutes(_alarms.Count + 2),
                 LastRemark = command.Remark
@@ -151,6 +176,9 @@ public sealed class MonitoringAlarmService : IMonitoringAlarmService
 
     private static string BuildAlarmNo(TelemetryReading reading) =>
         $"ALM-{Sanitize(reading.PointCode)}-{Sanitize(reading.MetricCode)}-{reading.CollectedAt:yyyyMMddHHmmss}";
+
+    private static string BuildAlarmWorkOrderNo(MonitoringAlarmEvent alarm) =>
+        $"WO-ALM-{Sanitize(alarm.AlarmNo).Replace("ALM", string.Empty, StringComparison.OrdinalIgnoreCase)}";
 
     private static string Sanitize(string value) =>
         Regex.Replace(value.ToUpperInvariant(), "[^A-Z0-9]+", "-").Trim('-');

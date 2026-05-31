@@ -25,9 +25,12 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
 
     private readonly IAssetMaintenancePersistence? _persistence;
 
-    public AssetMaintenanceService(IAssetMaintenancePersistence? persistence = null)
+    private readonly IWorkOrderIntakeService? _workOrderIntake;
+
+    public AssetMaintenanceService(IAssetMaintenancePersistence? persistence = null, IWorkOrderIntakeService? workOrderIntake = null)
     {
         _persistence = persistence;
+        _workOrderIntake = workOrderIntake;
         var persisted = _persistence?.Load();
         if (persisted is not null && (persisted.Assets.Count > 0 || persisted.Plans.Count > 0 || persisted.Tasks.Count > 0))
         {
@@ -133,6 +136,26 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
             lifecycleEventType,
             command.Operator,
             command.Remark);
+
+        if (generatedWorkOrder is not null && _workOrderIntake is not null)
+        {
+            var creation = _workOrderIntake.CreateExternalWorkOrder(new CreateExternalWorkOrderCommand(
+                generatedWorkOrder.WorkOrderNo,
+                generatedWorkOrder.Title,
+                generatedWorkOrder.ServiceType,
+                generatedWorkOrder.Priority,
+                generatedWorkOrder.Location,
+                generatedWorkOrder.ResponsibleTeam,
+                generatedWorkOrder.CreatedAt,
+                generatedWorkOrder.CreatedAt.AddHours(generatedWorkOrder.Priority == Priority.Critical ? 1 : 2),
+                command.Operator,
+                command.Remark));
+
+            if (!creation.Succeeded || creation.Detail is null)
+            {
+                return new MaintenanceTaskOperationResult(false, creation.ErrorMessage ?? "Failed to create follow-up work order.", task);
+            }
+        }
 
         _persistence?.SaveTaskCompletion(updatedTask, lifecycleEvent);
         _tasks[task.TaskNo] = updatedTask;

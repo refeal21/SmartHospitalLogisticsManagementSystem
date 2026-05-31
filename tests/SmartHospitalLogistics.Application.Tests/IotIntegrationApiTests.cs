@@ -81,7 +81,9 @@ public sealed class IotIntegrationApiTests : IClassFixture<IsolatedOperationsApi
         var board = await _client.GetFromJsonAsync<MonitoringAlarmBoard>(
             "/api/operations/monitoring-alarms",
             JsonOptions);
-        var alarm = Assert.Single(board!.Alarms);
+        var alarm = Assert.Single(board!.Alarms, item =>
+            item.PointCode == "MEDGAS-O2-8F" &&
+            item.MetricCode == "pressure");
         Assert.Equal(MonitoringAlarmStatus.New, alarm.Status);
         Assert.Equal("BIM-IPD-F8-WARD", alarm.Location.BimElementId);
 
@@ -98,6 +100,17 @@ public sealed class IotIntegrationApiTests : IClassFixture<IsolatedOperationsApi
         var converted = await convertResponse.Content.ReadFromJsonAsync<MonitoringAlarmEvent>(JsonOptions);
         Assert.Equal(MonitoringAlarmStatus.ConvertedToWorkOrder, converted?.Status);
         Assert.StartsWith("WO-ALM-", converted?.WorkOrderNo);
+
+        var workOrder = await _client.GetFromJsonAsync<WorkOrderDetail>(
+            $"/api/operations/work-orders/{converted!.WorkOrderNo}",
+            JsonOptions);
+        Assert.NotNull(workOrder);
+        Assert.Contains(workOrder.SourceEvidence, evidence => evidence.FeatureName == "客户物联告警联动");
+
+        var dispatchResponse = await _client.PostAsJsonAsync(
+            $"/api/operations/work-orders/{converted.WorkOrderNo}/dispatch",
+            new DispatchWorkOrderCommand("医气维保人员", "调度员", "按医气压力告警派工"));
+        dispatchResponse.EnsureSuccessStatusCode();
     }
 
     [Fact]

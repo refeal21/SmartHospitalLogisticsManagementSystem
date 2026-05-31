@@ -17,7 +17,7 @@ public interface IWorkOrderDispatchService
     ServiceRequestConversionResult ConvertServiceRequest(string requestNo, ConvertServiceRequestCommand command);
 }
 
-public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
+public sealed class WorkOrderDispatchService : IWorkOrderDispatchService, IWorkOrderIntakeService
 {
     private static readonly DateTimeOffset SeedTime = new(2026, 5, 30, 9, 30, 0, TimeSpan.FromHours(8));
     private readonly object _sync = new();
@@ -94,6 +94,42 @@ public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
         {
             var order = Find(workOrderNo);
             return order is null ? null : BuildDetail(order);
+        }
+    }
+
+    public ExternalWorkOrderCreationResult CreateExternalWorkOrder(CreateExternalWorkOrderCommand command)
+    {
+        lock (_sync)
+        {
+            var existing = Find(command.WorkOrderNo);
+            if (existing is not null)
+            {
+                return new ExternalWorkOrderCreationResult(true, null, BuildDetail(existing));
+            }
+
+            var workOrder = new WorkOrder(
+                command.WorkOrderNo,
+                command.Title,
+                command.ServiceType,
+                command.Priority,
+                WorkOrderStatus.New,
+                command.Location,
+                command.ResponsibleTeam,
+                command.CreatedAt,
+                command.SlaDueAt);
+            var timelineEntry = new WorkOrderTimelineEntry(
+                command.CreatedAt,
+                command.CreatedBy,
+                "外部来源建单",
+                WorkOrderStatus.New,
+                WorkOrderStatus.New,
+                command.Remark);
+
+            _persistence?.SaveWorkOrderTransition(workOrder, timelineEntry);
+            _workOrders.Add(workOrder);
+            _timeline[workOrder.WorkOrderNo] = [timelineEntry];
+
+            return new ExternalWorkOrderCreationResult(true, null, BuildDetail(workOrder));
         }
     }
 
@@ -306,6 +342,24 @@ public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
             return
             [
                 new FeatureEvidence("一站式服务受理", ["中科医信", "PPT", "北建院"], "服务请求受理、空间定位和专业班组映射来自竞品流程、PPT一站式服务中心和客户系统角色字段。"),
+                baseEvidence
+            ];
+        }
+
+        if (order.WorkOrderNo.StartsWith("WO-ALM-", StringComparison.OrdinalIgnoreCase))
+        {
+            return
+            [
+                new FeatureEvidence("客户物联告警联动", ["北建院", "PPT", "中科医信"], "物联点位异常经阈值规则进入预警池，并转入一站式工单调度。"),
+                baseEvidence
+            ];
+        }
+
+        if (order.WorkOrderNo.StartsWith("WO-MT-", StringComparison.OrdinalIgnoreCase))
+        {
+            return
+            [
+                new FeatureEvidence("巡检保养异常转工单", ["中科医信", "PPT", "北建院"], "巡检/保养发现设备异常后生成维修工单，保留资产、空间和客户系统来源。"),
                 baseEvidence
             ];
         }

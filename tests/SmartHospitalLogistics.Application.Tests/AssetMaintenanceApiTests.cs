@@ -67,6 +67,17 @@ public sealed class AssetMaintenanceApiTests : IClassFixture<IsolatedOperationsA
         Assert.Equal(MaintenanceTaskStatus.ConvertedToWorkOrder, result?.Task?.Status);
         Assert.NotNull(result?.GeneratedWorkOrder);
         Assert.Equal(WorkOrderStatus.New, result.GeneratedWorkOrder.Status);
+
+        var workOrder = await _client.GetFromJsonAsync<WorkOrderDetail>(
+            $"/api/operations/work-orders/{result.GeneratedWorkOrder.WorkOrderNo}",
+            JsonOptions);
+        Assert.NotNull(workOrder);
+        Assert.Contains(workOrder.SourceEvidence, evidence => evidence.FeatureName == "巡检保养异常转工单");
+
+        var dispatchResponse = await _client.PostAsJsonAsync(
+            $"/api/operations/work-orders/{result.GeneratedWorkOrder.WorkOrderNo}/dispatch",
+            new DispatchWorkOrderCommand("环境监管班组", "调度员", "按医废巡检异常派工"));
+        dispatchResponse.EnsureSuccessStatusCode();
     }
 
     [Fact]

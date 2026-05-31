@@ -252,6 +252,30 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
     await expect(page.getByText(/WO-MT-20260530-0002|WO-MT-20260530-0001/).first()).toBeVisible()
   })
 
+  test('资产巡检异常工单进入调度池并保留来源证据', async ({ page }) => {
+    await page.goto('/#设备台账')
+
+    await page.getByRole('button', { name: /MEDGAS-IPD-8F/ }).click()
+    const convertButton = page.getByRole('button', { name: '异常完成并转工单' }).first()
+    if (await convertButton.isEnabled()) {
+      await convertButton.click()
+    }
+
+    const generatedWorkOrder = page.getByTestId('maintenance-generated-workorder')
+    await expect(generatedWorkOrder).toContainText(/WO-MT-20260530-0002|WO-MT-20260530-0001/)
+    await expect(generatedWorkOrder).toContainText('BIM-IPD-F8-WARD')
+    await expect(generatedWorkOrder).toContainText('医气维保人员')
+    await expect(generatedWorkOrder).toContainText('巡检保养异常转工单')
+
+    await generatedWorkOrder.getByRole('button', { name: '进入调度池' }).click()
+    await expect(page.getByRole('heading', { name: '工单调度', exact: true })).toBeVisible()
+    await expect(page.getByTestId('work-order-list')).toContainText(/WO-MT-20260530-0002|WO-MT-20260530-0001/)
+    await expect(page.getByTestId('work-order-detail')).toContainText('巡检保养异常转工单')
+
+    await page.getByRole('button', { name: /派工到/ }).click()
+    await expect(page.getByTestId('work-order-detail')).toContainText('状态：已派工')
+  })
+
   test('客户物联点位接入支持字段查看和异常读数判定', async ({ page }) => {
     await page.goto('/')
 

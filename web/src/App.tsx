@@ -732,6 +732,11 @@ const assetSourceEvidence: FeatureEvidence[] = [
     sources: ['北建院', '中科医信', 'PPT'],
     evidenceSummary: '客户数据、竞品功能和 PPT 均涉及医用气体压力、阀箱、报警处置和维修闭环。',
   },
+  {
+    featureName: '巡检保养异常转工单',
+    sources: ['中科医信', 'PPT', '北建院'],
+    evidenceSummary: '巡检/保养发现异常后生成维修工单，保留资产、空间、责任班组和来源证据，并进入一站式调度闭环。',
+  },
 ]
 
 const localAssetMaintenanceBoard: AssetMaintenanceBoard = {
@@ -1130,6 +1135,7 @@ function App() {
   const [assetBoard, setAssetBoard] = useState(localAssetMaintenanceBoard)
   const [selectedAssetDetail, setSelectedAssetDetail] = useState(() => buildLocalAssetDetail('MEDGAS-IPD-8F'))
   const [lastMaintenanceResult, setLastMaintenanceResult] = useState<MaintenanceTaskOperationResult | null>(null)
+  const [convertedMaintenanceDetail, setConvertedMaintenanceDetail] = useState<WorkOrderDetail | null>(null)
   const [iotCatalog, setIotCatalog] = useState(localIotCatalog)
   const [selectedIotPoint, setSelectedIotPoint] = useState(() => buildLocalIotPointDetail('MEDGAS-O2-8F'))
   const [lastTelemetryResult, setLastTelemetryResult] = useState<TelemetryIngestionResult | null>(null)
@@ -1345,6 +1351,10 @@ function App() {
     options: { openDispatch?: boolean } = { openDispatch: true },
   ) {
     const acceptedOrder = detail.workOrder
+    const recommendedTeam =
+      acceptedOrder.responsibleTeam && !['待调度', '未派工'].includes(acceptedOrder.responsibleTeam)
+        ? acceptedOrder.responsibleTeam
+        : '综合维修班'
 
     setDispatchBoard((current) => {
       const hadOrder = current.workOrders.some((order) => order.workOrderNo === acceptedOrder.workOrderNo)
@@ -1359,8 +1369,8 @@ function App() {
         recommendations: [
           {
             workOrderNo: acceptedOrder.workOrderNo,
-            recommendedTeam: '综合维修班',
-            reason: '服务受理生成的综合维修请求，按空间和专业派给综合维修班',
+            recommendedTeam,
+            reason: `${acceptedOrder.serviceType}按空间、专业和SLA风险派给${recommendedTeam}`,
             priority: acceptedOrder.priority,
             slaMinutesRemaining: 120,
           },
@@ -1736,6 +1746,13 @@ function App() {
 
     const completedTask = result.task
     setLastMaintenanceResult(result)
+    if (result.generatedWorkOrder) {
+      const detail = buildMaintenanceWorkOrderDetail(result.generatedWorkOrder, completedTask)
+      setConvertedMaintenanceDetail(detail)
+      applyGeneratedWorkOrderDetail(detail, { openDispatch: false })
+    } else {
+      setConvertedMaintenanceDetail(null)
+    }
     setAssetBoard((current) => ({
       ...current,
       dueTasks: current.dueTasks
@@ -1777,6 +1794,15 @@ function App() {
         ...current.lifecycle,
       ],
     }))
+  }
+
+  function openConvertedMaintenanceWorkOrder() {
+    if (!convertedMaintenanceDetail) {
+      return
+    }
+
+    setSelectedDetail(convertedMaintenanceDetail)
+    openServiceWorkflowTab('工单调度')
   }
 
   function applyAlarmUpdate(updatedAlarm: MonitoringAlarmEvent) {
@@ -2179,10 +2205,18 @@ function App() {
                   </article>
                 ))}
                 {lastMaintenanceResult?.generatedWorkOrder ? (
-                  <div className="generated-workorder">
+                  <div className="generated-workorder" data-testid="maintenance-generated-workorder">
                     <strong>已转工单</strong>
                     <span>{lastMaintenanceResult.generatedWorkOrder.workOrderNo}</span>
                     <small>{lastMaintenanceResult.generatedWorkOrder.title}</small>
+                    <small>BIM：{convertedMaintenanceDetail?.location.bimElementId ?? lastMaintenanceResult.generatedWorkOrder.location.bimElementId}</small>
+                    <small>责任班组：{lastMaintenanceResult.generatedWorkOrder.responsibleTeam}</small>
+                    <small>
+                      来源：{convertedMaintenanceDetail?.sourceEvidence.map((evidence) => evidence.featureName).join('、') ?? '巡检保养异常转工单'}
+                    </small>
+                    <button type="button" onClick={openConvertedMaintenanceWorkOrder}>
+                      进入调度池
+                    </button>
                   </div>
                 ) : null}
               </section>
@@ -2574,6 +2608,8 @@ function buildLocalDetail(order: WorkOrder): WorkOrderDetail {
     location: order.location,
     sourceEvidence: order.workOrderNo.startsWith('WO-ALM-')
       ? [alarmSourceEvidence[1], sourceEvidence[0]]
+      : order.workOrderNo.startsWith('WO-MT-')
+      ? [assetSourceEvidence[3], assetSourceEvidence[1], sourceEvidence[0]]
       : order.serviceType.includes('环境')
       ? [sourceEvidence[0], sourceEvidence[2]]
       : [sourceEvidence[0]],
@@ -2584,7 +2620,9 @@ function buildLocalDetail(order: WorkOrder): WorkOrderDetail {
         action: '创建',
         fromStatus: 'New',
         toStatus: order.status,
-        remark: '来自一站式服务或监测告警的模拟工单',
+        remark: order.workOrderNo.startsWith('WO-MT-')
+          ? '来自巡检保养异常转工单的模拟工单'
+          : '来自一站式服务或监测告警的模拟工单',
       },
     ],
     slaRiskLevel: order.priority === 'Critical' || order.status === 'Escalated' ? 'High' : 'Medium',
@@ -2608,6 +2646,51 @@ function buildLocalAssetDetail(assetCode: string): AssetMaintenanceDetail {
     lifecycle,
     sourceEvidence: assetSourceEvidence,
   }
+}
+
+function buildMaintenanceWorkOrderDetail(
+  generatedWorkOrder: MaintenanceGeneratedWorkOrder,
+  task: MaintenanceTask,
+): WorkOrderDetail {
+  const isMedicalGas = task.assetCode.includes('MEDGAS') || generatedWorkOrder.serviceType.includes('医')
+  const workOrder: WorkOrder = {
+    ...generatedWorkOrder,
+    slaDueAt: addMinutesToIso(generatedWorkOrder.createdAt, generatedWorkOrder.priority === 'Critical' ? 60 : 240),
+  }
+
+  return {
+    workOrder,
+    location: generatedWorkOrder.location,
+    sourceEvidence: [
+      assetSourceEvidence[3],
+      ...(isMedicalGas ? [assetSourceEvidence[2]] : []),
+      assetSourceEvidence[1],
+      sourceEvidence[0],
+    ],
+    timeline: [
+      {
+        occurredAt: generatedWorkOrder.createdAt,
+        operator: task.completedBy ?? task.responsibleTeam,
+        action: '巡检异常建单',
+        fromStatus: 'New',
+        toStatus: generatedWorkOrder.status,
+        remark: `${task.title}发现异常，转入一站式工单调度池`,
+      },
+    ],
+    slaRiskLevel: generatedWorkOrder.priority === 'Critical' ? 'High' : 'Medium',
+    slaMinutesRemaining: generatedWorkOrder.priority === 'Critical' ? 60 : 240,
+    allowedActions: ['Dispatch', 'Accept', 'Suspend', 'Complete'],
+  }
+}
+
+function addMinutesToIso(value: string, minutes: number) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  date.setMinutes(date.getMinutes() + minutes)
+  return date.toISOString()
 }
 
 function buildLocalMaintenanceResult(

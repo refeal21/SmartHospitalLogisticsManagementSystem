@@ -127,6 +127,35 @@ api.MapPost("/iot-readings", (TelemetryIngestionCommand command, IIotIntegration
     })
     .WithName("IngestTelemetryReading");
 
+api.MapGet("/monitoring-alarms", (IMonitoringAlarmService service) => service.GetAlarmBoard())
+    .WithName("GetMonitoringAlarmBoard");
+
+api.MapGet("/monitoring-alarms/{alarmNo}", (string alarmNo, IMonitoringAlarmService service) =>
+    service.GetAlarm(alarmNo) is { } alarm
+        ? Results.Ok(alarm)
+        : Results.NotFound(new { error = $"Monitoring alarm {alarmNo} was not found." }))
+    .WithName("GetMonitoringAlarm");
+
+api.MapPost("/monitoring-alarms/{alarmNo}/acknowledge", (
+        string alarmNo,
+        AcknowledgeAlarmCommand command,
+        IMonitoringAlarmService service) =>
+    {
+        var result = service.Acknowledge(alarmNo, command);
+        return ToMonitoringAlarmHttpResult(result);
+    })
+    .WithName("AcknowledgeMonitoringAlarm");
+
+api.MapPost("/monitoring-alarms/{alarmNo}/convert-to-work-order", (
+        string alarmNo,
+        ConvertAlarmToWorkOrderCommand command,
+        IMonitoringAlarmService service) =>
+    {
+        var result = service.ConvertToWorkOrder(alarmNo, command);
+        return ToMonitoringAlarmHttpResult(result);
+    })
+    .WithName("ConvertMonitoringAlarmToWorkOrder");
+
 app.Run();
 
 static IResult ToHttpResult(DispatchOperationResult result)
@@ -170,6 +199,18 @@ static IResult ToTelemetryHttpResult(TelemetryIngestionResult result)
     if (result.Succeeded)
     {
         return Results.Ok(result);
+    }
+
+    return result.NotFound
+        ? Results.NotFound(new { error = result.ErrorMessage })
+        : Results.BadRequest(new { error = result.ErrorMessage });
+}
+
+static IResult ToMonitoringAlarmHttpResult(MonitoringAlarmOperationResult result)
+{
+    if (result.Succeeded && result.Alarm is not null)
+    {
+        return Results.Ok(result.Alarm);
     }
 
     return result.NotFound

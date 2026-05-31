@@ -38,8 +38,21 @@ public static class DependencyInjection
 
             return new SqliteIotIntegrationPersistence(dbPath);
         });
+        services.AddSingleton<IMonitoringAlarmPersistence>(_ =>
+        {
+            var dbPath = Environment.GetEnvironmentVariable("SMART_HOSPITAL_LOGISTICS_ALARM_DB");
+            if (string.IsNullOrWhiteSpace(dbPath))
+            {
+                dbPath = Path.Combine(AppContext.BaseDirectory, "data", "smart-hospital-alarms.db");
+            }
+
+            return new SqliteMonitoringAlarmPersistence(dbPath);
+        });
         services.AddSingleton<IWorkOrderDispatchService, WorkOrderDispatchService>();
         services.AddSingleton<IAssetMaintenanceService, AssetMaintenanceService>();
+        services.AddSingleton<MonitoringAlarmService>();
+        services.AddSingleton<IMonitoringAlarmService>(provider => provider.GetRequiredService<MonitoringAlarmService>());
+        services.AddSingleton<IMonitoringAlarmRecorder>(provider => provider.GetRequiredService<MonitoringAlarmService>());
         services.AddSingleton<IIotIntegrationService, IotIntegrationService>();
         return services;
     }

@@ -25,9 +25,14 @@ public sealed class IotIntegrationService : IIotIntegrationService
 
     private readonly IIotIntegrationPersistence? _persistence;
 
-    public IotIntegrationService(IIotIntegrationPersistence? persistence = null)
+    private readonly IMonitoringAlarmRecorder? _alarmRecorder;
+
+    public IotIntegrationService(
+        IIotIntegrationPersistence? persistence = null,
+        IMonitoringAlarmRecorder? alarmRecorder = null)
     {
         _persistence = persistence;
+        _alarmRecorder = alarmRecorder;
         var persisted = _persistence?.Load();
         if (persisted is not null && (persisted.Systems.Count > 0 || persisted.Points.Count > 0))
         {
@@ -121,6 +126,7 @@ public sealed class IotIntegrationService : IIotIntegrationService
         }
 
         _persistence?.SaveReading(reading);
+        _alarmRecorder?.RecordTelemetryReading(reading, point);
         readings.Insert(0, reading);
         return new TelemetryIngestionResult(true, null, command.PointCode, command.MetricCode, risk, ruleSummary, reading);
     }

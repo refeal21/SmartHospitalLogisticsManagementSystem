@@ -102,6 +102,14 @@ public enum TelemetryRiskLevel
     Critical
 }
 
+public enum MonitoringAlarmStatus
+{
+    New,
+    Acknowledged,
+    ConvertedToWorkOrder,
+    Closed
+}
+
 public enum ThresholdDirection
 {
     Above,
@@ -465,6 +473,44 @@ public sealed record TelemetryReading(
     DateTimeOffset CollectedAt,
     TelemetryRiskLevel RiskLevel,
     string RuleSummary);
+
+public sealed record MonitoringAlarmEvent(
+    string AlarmNo,
+    string PointCode,
+    string MetricCode,
+    string Title,
+    TelemetryRiskLevel RiskLevel,
+    MonitoringAlarmStatus Status,
+    SpatialLocation Location,
+    decimal Value,
+    string Unit,
+    DateTimeOffset TriggeredAt,
+    string RuleSummary,
+    string ResponsibleTeam,
+    string? WorkOrderNo = null,
+    string? AcknowledgedBy = null,
+    DateTimeOffset? AcknowledgedAt = null,
+    string? LastRemark = null);
+
+public sealed record MonitoringAlarmBoard(
+    DateTimeOffset GeneratedAt,
+    IReadOnlyList<MonitoringAlarmEvent> Alarms,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
+
+public sealed record AcknowledgeAlarmCommand(
+    string Operator,
+    string Remark);
+
+public sealed record ConvertAlarmToWorkOrderCommand(
+    string Operator,
+    string TargetTeam,
+    string Remark);
+
+public sealed record MonitoringAlarmOperationResult(
+    bool Succeeded,
+    string? ErrorMessage,
+    MonitoringAlarmEvent? Alarm,
+    bool NotFound = false);
 
 public sealed record TelemetryIngestionCommand(
     string PointCode,

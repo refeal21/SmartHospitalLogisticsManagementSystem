@@ -18,8 +18,12 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
             services.RemoveAll<IWorkOrderPersistence>();
             services.RemoveAll<IAssetMaintenancePersistence>();
             services.RemoveAll<IIotIntegrationPersistence>();
+            services.RemoveAll<IMonitoringAlarmPersistence>();
             services.RemoveAll<IWorkOrderDispatchService>();
             services.RemoveAll<IAssetMaintenanceService>();
+            services.RemoveAll<MonitoringAlarmService>();
+            services.RemoveAll<IMonitoringAlarmService>();
+            services.RemoveAll<IMonitoringAlarmRecorder>();
             services.RemoveAll<IIotIntegrationService>();
 
             services.AddSingleton<IWorkOrderPersistence>(_ =>
@@ -28,9 +32,14 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
                 new SqliteAssetMaintenancePersistence(Path.Combine(_dbDirectory, "assets.db")));
             services.AddSingleton<IIotIntegrationPersistence>(_ =>
                 new SqliteIotIntegrationPersistence(Path.Combine(_dbDirectory, "iot.db")));
+            services.AddSingleton<IMonitoringAlarmPersistence>(_ =>
+                new SqliteMonitoringAlarmPersistence(Path.Combine(_dbDirectory, "alarms.db")));
 
             services.AddSingleton<IWorkOrderDispatchService, WorkOrderDispatchService>();
             services.AddSingleton<IAssetMaintenanceService, AssetMaintenanceService>();
+            services.AddSingleton<MonitoringAlarmService>();
+            services.AddSingleton<IMonitoringAlarmService>(provider => provider.GetRequiredService<MonitoringAlarmService>());
+            services.AddSingleton<IMonitoringAlarmRecorder>(provider => provider.GetRequiredService<MonitoringAlarmService>());
             services.AddSingleton<IIotIntegrationService, IotIntegrationService>();
         });
     }

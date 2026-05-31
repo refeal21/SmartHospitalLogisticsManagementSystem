@@ -66,6 +66,41 @@ public sealed class IotIntegrationApiTests : IClassFixture<IsolatedOperationsApi
     }
 
     [Fact]
+    public async Task CriticalIotReadingApiCreatesActionableMonitoringAlarm()
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/api/operations/iot-readings",
+            new TelemetryIngestionCommand(
+                "MEDGAS-O2-8F",
+                "pressure",
+                0.31m,
+                "MPa",
+                new DateTimeOffset(2026, 5, 30, 10, 28, 0, TimeSpan.FromHours(8))));
+        response.EnsureSuccessStatusCode();
+
+        var board = await _client.GetFromJsonAsync<MonitoringAlarmBoard>(
+            "/api/operations/monitoring-alarms",
+            JsonOptions);
+        var alarm = Assert.Single(board!.Alarms);
+        Assert.Equal(MonitoringAlarmStatus.New, alarm.Status);
+        Assert.Equal("BIM-IPD-F8-WARD", alarm.Location.BimElementId);
+
+        var acknowledgedResponse = await _client.PostAsJsonAsync(
+            $"/api/operations/monitoring-alarms/{alarm.AlarmNo}/acknowledge",
+            new AcknowledgeAlarmCommand("医气维保人员", "已确认氧气压力异常"));
+        acknowledgedResponse.EnsureSuccessStatusCode();
+
+        var convertResponse = await _client.PostAsJsonAsync(
+            $"/api/operations/monitoring-alarms/{alarm.AlarmNo}/convert-to-work-order",
+            new ConvertAlarmToWorkOrderCommand("调度员", "医气维保人员", "转入医气专项处置工单"));
+        convertResponse.EnsureSuccessStatusCode();
+
+        var converted = await convertResponse.Content.ReadFromJsonAsync<MonitoringAlarmEvent>(JsonOptions);
+        Assert.Equal(MonitoringAlarmStatus.ConvertedToWorkOrder, converted?.Status);
+        Assert.StartsWith("WO-ALM-", converted?.WorkOrderNo);
+    }
+
+    [Fact]
     public async Task IotApisReturn404ForMissingPointAnd400ForUnknownMetric()
     {
         var missingPoint = await _client.GetAsync("/api/operations/iot-points/POINT-NOT-FOUND");

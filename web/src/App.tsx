@@ -318,6 +318,90 @@ type MaintenanceTaskOperationResult = {
   notFound: boolean
 }
 
+type IotSystemCategory =
+  | 'StrongElectric'
+  | 'Hvac'
+  | 'WaterSupplyDrainage'
+  | 'MedicalGas'
+  | 'EnvironmentQuality'
+  | 'Sewage'
+type TelemetryRiskLevel = 'Normal' | 'Warning' | 'Critical'
+type ThresholdDirection = 'Above' | 'Below' | 'OutsideRange'
+
+type IotSystemProfile = {
+  category: IotSystemCategory
+  name: string
+  subsystems: string[]
+  roles: string[]
+  endpoints: string[]
+}
+
+type IotMetricDefinition = {
+  code: string
+  name: string
+  unit: string
+  dataType: string
+  sourceField: string
+}
+
+type IotMonitoringPoint = {
+  pointCode: string
+  name: string
+  category: IotSystemCategory
+  location: SpatialLocation
+  deviceCode: string
+  protocolAdapter: string
+  metrics: IotMetricDefinition[]
+  sourceEvidence: FeatureEvidence[]
+}
+
+type TelemetryThresholdRule = {
+  pointCode: string
+  metricCode: string
+  direction: ThresholdDirection
+  warningMin?: number | null
+  warningMax?: number | null
+  criticalMin?: number | null
+  criticalMax?: number | null
+  ruleSummary: string
+}
+
+type TelemetryReading = {
+  pointCode: string
+  metricCode: string
+  value: number
+  unit: string
+  collectedAt: string
+  riskLevel: TelemetryRiskLevel
+  ruleSummary: string
+}
+
+type IotPointDetail = {
+  point: IotMonitoringPoint
+  thresholdRules: TelemetryThresholdRule[]
+  recentReadings: TelemetryReading[]
+  sourceEvidence: FeatureEvidence[]
+}
+
+type IotIntegrationCatalog = {
+  generatedAt: string
+  systems: IotSystemProfile[]
+  points: IotMonitoringPoint[]
+  thresholdRules: TelemetryThresholdRule[]
+  sourceEvidence: FeatureEvidence[]
+}
+
+type TelemetryIngestionResult = {
+  succeeded: boolean
+  errorMessage?: string | null
+  pointCode: string
+  metricCode: string
+  riskLevel: TelemetryRiskLevel
+  ruleSummary: string
+  reading?: TelemetryReading | null
+  notFound: boolean
+}
+
 const locations = {
   lobby: {
     campus: '同仁亦庄院区',
@@ -724,6 +808,69 @@ const localAssetMaintenanceBoard: AssetMaintenanceBoard = {
   },
 }
 
+const iotSourceEvidence: FeatureEvidence[] = [
+  {
+    featureName: '客户物联数据接入模型',
+    sources: ['北建院', 'PPT'],
+    evidenceSummary: '北建院调研数据定义系统、传感器、点位、可采集字段和角色；PPT 定义 BIM 智慧运维集成边界。',
+  },
+  {
+    featureName: '医用气体监测',
+    sources: ['北建院', '中科医信', 'PPT'],
+    evidenceSummary: '氧气、压缩空气、负压真空、压力流量与报警处置是客户数据和竞品功能的共同项。',
+  },
+]
+
+const localIotCatalog: IotIntegrationCatalog = {
+  generatedAt: '2026-05-30T09:30:00+08:00',
+  systems: [
+    { category: 'StrongElectric', name: '强电系统', subsystems: ['变配电', '远传电表', '照明'], roles: ['电工班工作人员'], endpoints: ['控制室电脑端', '移动端'] },
+    { category: 'Hvac', name: '供暖空调系统', subsystems: ['冷热源', '空调水', '新风机组'], roles: ['暖通班工作人员'], endpoints: ['控制室电脑端', '移动端'] },
+    { category: 'MedicalGas', name: '医用气体系统', subsystems: ['氧气', '压缩空气', '负压真空'], roles: ['医气维保人员'], endpoints: ['控制室电脑端', '移动端'] },
+    { category: 'EnvironmentQuality', name: '环境质量系统', subsystems: ['CO2', '温湿度'], roles: ['环境监管班组'], endpoints: ['控制室电脑端', '移动端'] },
+  ],
+  points: [
+    {
+      pointCode: 'MEDGAS-O2-8F',
+      name: '住院 8F 氧气压力监测点',
+      category: 'MedicalGas',
+      location: locations.ward,
+      deviceCode: 'MEDGAS-O2-8F',
+      protocolAdapter: 'medical-gas-adapter',
+      metrics: [
+        { code: 'pressure', name: '氧气压力', unit: 'MPa', dataType: 'decimal', sourceField: '医气压力' },
+        { code: 'flow', name: '氧气流量', unit: 'm3/h', dataType: 'decimal', sourceField: '医气流量' },
+      ],
+      sourceEvidence: iotSourceEvidence,
+    },
+    {
+      pointCode: 'PWR-LV-B1-IN-01',
+      name: 'B1 低压进线柜多功能电表',
+      category: 'StrongElectric',
+      location: locations.energy,
+      deviceCode: 'METER-LV-001',
+      protocolAdapter: 'modbus-adapter',
+      metrics: [
+        { code: 'voltage', name: '电压', unit: 'V', dataType: 'decimal', sourceField: '电压' },
+        { code: 'current', name: '电流', unit: 'A', dataType: 'decimal', sourceField: '电流' },
+        { code: 'kwh', name: '电度', unit: 'kWh', dataType: 'decimal', sourceField: '电度' },
+      ],
+      sourceEvidence: iotSourceEvidence,
+    },
+  ],
+  thresholdRules: [
+    {
+      pointCode: 'MEDGAS-O2-8F',
+      metricCode: 'pressure',
+      direction: 'Below',
+      warningMin: 0.38,
+      criticalMin: 0.35,
+      ruleSummary: '医用氧气压力低于阈值需告警处置',
+    },
+  ],
+  sourceEvidence: iotSourceEvidence,
+}
+
 const statusLabels: Record<WorkOrderStatus | FacilityStatus | SignalStatus, string> = {
   New: '新建',
   Dispatched: '已派工',
@@ -764,6 +911,21 @@ const criticalityLabels: Record<AssetCriticality, string> = {
   LifeSafety: '生命安全',
 }
 
+const iotCategoryLabels: Record<IotSystemCategory, string> = {
+  StrongElectric: '强电',
+  Hvac: '暖通',
+  WaterSupplyDrainage: '给排水',
+  MedicalGas: '医气',
+  EnvironmentQuality: '环境',
+  Sewage: '污水',
+}
+
+const telemetryRiskLabels: Record<TelemetryRiskLevel, string> = {
+  Normal: '正常',
+  Warning: '预警',
+  Critical: '严重',
+}
+
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5248'
 
 function App() {
@@ -774,6 +936,9 @@ function App() {
   const [assetBoard, setAssetBoard] = useState(localAssetMaintenanceBoard)
   const [selectedAssetDetail, setSelectedAssetDetail] = useState(() => buildLocalAssetDetail('MEDGAS-IPD-8F'))
   const [lastMaintenanceResult, setLastMaintenanceResult] = useState<MaintenanceTaskOperationResult | null>(null)
+  const [iotCatalog, setIotCatalog] = useState(localIotCatalog)
+  const [selectedIotPoint, setSelectedIotPoint] = useState(() => buildLocalIotPointDetail('MEDGAS-O2-8F'))
+  const [lastTelemetryResult, setLastTelemetryResult] = useState<TelemetryIngestionResult | null>(null)
   const [source, setSource] = useState<'api' | 'local'>('local')
 
   useEffect(() => {
@@ -784,18 +949,27 @@ function App() {
       fetch(`${apiBase}/api/logistics/blueprint`, { signal: controller.signal }),
       fetch(`${apiBase}/api/operations/dispatch-board`, { signal: controller.signal }),
       fetch(`${apiBase}/api/operations/asset-maintenance-board`, { signal: controller.signal }),
+      fetch(`${apiBase}/api/operations/iot-catalog`, { signal: controller.signal }),
     ])
-      .then(async ([dashboardResponse, blueprintResponse, boardResponse, assetBoardResponse]) => {
-        if (!dashboardResponse.ok || !blueprintResponse.ok || !boardResponse.ok || !assetBoardResponse.ok) {
+      .then(async ([dashboardResponse, blueprintResponse, boardResponse, assetBoardResponse, iotCatalogResponse]) => {
+        if (
+          !dashboardResponse.ok ||
+          !blueprintResponse.ok ||
+          !boardResponse.ok ||
+          !assetBoardResponse.ok ||
+          !iotCatalogResponse.ok
+        ) {
           throw new Error('Logistics API unavailable')
         }
 
         const board = (await boardResponse.json()) as DispatchBoard
         const maintenanceBoard = (await assetBoardResponse.json()) as AssetMaintenanceBoard
+        const fetchedIotCatalog = (await iotCatalogResponse.json()) as IotIntegrationCatalog
         setDashboard((await dashboardResponse.json()) as OperationsDashboard)
         setBlueprint((await blueprintResponse.json()) as LogisticsBlueprint)
         setDispatchBoard(board)
         setAssetBoard(maintenanceBoard)
+        setIotCatalog(fetchedIotCatalog)
         setSource('api')
 
         const firstWorkOrderNo = board.workOrders[0]?.workOrderNo
@@ -816,6 +990,18 @@ function App() {
           })
           if (assetDetailResponse.ok) {
             setSelectedAssetDetail((await assetDetailResponse.json()) as AssetMaintenanceDetail)
+          }
+        }
+
+        const firstPointCode =
+          fetchedIotCatalog.points.find((point) => point.category === 'MedicalGas')?.pointCode ??
+          fetchedIotCatalog.points[0]?.pointCode
+        if (firstPointCode) {
+          const pointResponse = await fetch(`${apiBase}/api/operations/iot-points/${firstPointCode}`, {
+            signal: controller.signal,
+          })
+          if (pointResponse.ok) {
+            setSelectedIotPoint((await pointResponse.json()) as IotPointDetail)
           }
         }
       })
@@ -898,6 +1084,44 @@ function App() {
     }
 
     applyMaintenanceResult(buildLocalMaintenanceResult(task, convertToWorkOrder, checklistResults))
+  }
+
+  async function loadIotPointDetail(pointCode: string, forceApi = false) {
+    if (source === 'api' || forceApi) {
+      const response = await fetch(`${apiBase}/api/operations/iot-points/${pointCode}`)
+      if (response.ok) {
+        setSelectedIotPoint((await response.json()) as IotPointDetail)
+        return
+      }
+    }
+
+    setSelectedIotPoint(buildLocalIotPointDetail(pointCode))
+  }
+
+  async function ingestCriticalTelemetry() {
+    const metricCode = selectedIotPoint.point.metrics[0]?.code ?? 'pressure'
+    const value = selectedIotPoint.point.pointCode.includes('ENV') ? 1300 : 0.31
+    const unit = selectedIotPoint.point.metrics[0]?.unit ?? ''
+
+    if (source === 'api') {
+      const response = await fetch(`${apiBase}/api/operations/iot-readings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pointCode: selectedIotPoint.point.pointCode,
+          metricCode,
+          value,
+          unit,
+          collectedAt: new Date().toISOString(),
+        }),
+      })
+      if (response.ok) {
+        applyTelemetryResult((await response.json()) as TelemetryIngestionResult)
+        return
+      }
+    }
+
+    applyTelemetryResult(buildLocalTelemetryResult(selectedIotPoint.point, metricCode, value, unit))
   }
 
   async function dispatchSelected() {
@@ -1020,6 +1244,18 @@ function App() {
         },
         ...current.lifecycle,
       ],
+    }))
+  }
+
+  function applyTelemetryResult(result: TelemetryIngestionResult) {
+    if (!result.succeeded || !result.reading) {
+      return
+    }
+
+    setLastTelemetryResult(result)
+    setSelectedIotPoint((current) => ({
+      ...current,
+      recentReadings: [result.reading!, ...current.recentReadings].slice(0, 12),
     }))
   }
 
@@ -1249,6 +1485,90 @@ function App() {
                     </li>
                   ))}
                 </ol>
+              </section>
+            </div>
+          </section>
+
+          <section className="panel iot-panel">
+            <PanelHeader title="客户物联点位接入" meta="系统 / 点位 / 字段 / 阈值 / 读数风险" />
+            <div className="iot-workbench">
+              <section>
+                <h2>系统覆盖</h2>
+                <div className="iot-system-grid">
+                  {iotCatalog.systems.map((system) => (
+                    <article key={system.category}>
+                      <strong>{system.name}</strong>
+                      <span>{system.subsystems.slice(0, 3).join('、')}</span>
+                    </article>
+                  ))}
+                </div>
+              </section>
+
+              <section>
+                <h2>点位目录</h2>
+                <div className="iot-point-list">
+                  {iotCatalog.points.map((point) => (
+                    <button
+                      className={`iot-point-card ${selectedIotPoint.point.pointCode === point.pointCode ? 'selected' : ''}`}
+                      key={point.pointCode}
+                      type="button"
+                      onClick={() => void loadIotPointDetail(point.pointCode)}
+                    >
+                      <strong>{point.name}</strong>
+                      <span>{point.pointCode} / {iotCategoryLabels[point.category]}</span>
+                      <small>{point.protocolAdapter} / {point.location.bimElementId}</small>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="iot-detail-panel">
+                <h2>时序字段</h2>
+                <div className="detail-title">
+                  <strong>{selectedIotPoint.point.name}</strong>
+                  <span>{selectedIotPoint.point.deviceCode}</span>
+                </div>
+                <div className="module-tags">
+                  {selectedIotPoint.point.metrics.map((metric) => (
+                    <span key={metric.code}>{metric.name} / {metric.sourceField}</span>
+                  ))}
+                </div>
+                <dl className="detail-list">
+                  <div>
+                    <dt>BIM</dt>
+                    <dd>{selectedIotPoint.point.location.bimElementId}</dd>
+                  </div>
+                  <div>
+                    <dt>来源</dt>
+                    <dd>{selectedIotPoint.sourceEvidence.flatMap((item) => item.sources).join('、')}</dd>
+                  </div>
+                </dl>
+                <button type="button" onClick={() => void ingestCriticalTelemetry()}>
+                  模拟异常读数
+                </button>
+              </section>
+
+              <section className="iot-reading-panel">
+                <h2>阈值与读数</h2>
+                {selectedIotPoint.thresholdRules.map((rule) => (
+                  <article key={`${rule.pointCode}-${rule.metricCode}`}>
+                    <strong>{rule.metricCode}</strong>
+                    <span>{rule.ruleSummary}</span>
+                  </article>
+                ))}
+                {selectedIotPoint.recentReadings.slice(0, 4).map((reading) => (
+                  <article className={`reading-card ${reading.riskLevel}`} key={`${reading.collectedAt}-${reading.metricCode}`}>
+                    <strong>{reading.metricCode}: {reading.value} {reading.unit}</strong>
+                    <span>{telemetryRiskLabels[reading.riskLevel]}</span>
+                    <small>{reading.ruleSummary}</small>
+                  </article>
+                ))}
+                {lastTelemetryResult ? (
+                  <div className="generated-workorder">
+                    <strong>最新风险：{telemetryRiskLabels[lastTelemetryResult.riskLevel]}</strong>
+                    <span>{lastTelemetryResult.pointCode} / {lastTelemetryResult.metricCode}</span>
+                  </div>
+                ) : null}
               </section>
             </div>
           </section>
@@ -1494,6 +1814,55 @@ function buildLocalMaintenanceResult(
       workOrderNo: generatedWorkOrder?.workOrderNo ?? null,
     },
     generatedWorkOrder,
+    notFound: false,
+  }
+}
+
+function buildLocalIotPointDetail(pointCode: string): IotPointDetail {
+  const point = localIotCatalog.points.find((item) => item.pointCode === pointCode) ?? localIotCatalog.points[0]
+
+  return {
+    point,
+    thresholdRules: localIotCatalog.thresholdRules.filter((rule) => rule.pointCode === point.pointCode),
+    recentReadings: [
+      {
+        pointCode: point.pointCode,
+        metricCode: point.metrics[0]?.code ?? 'pressure',
+        value: point.pointCode.includes('PWR') ? 228 : 0.39,
+        unit: point.metrics[0]?.unit ?? '',
+        collectedAt: '2026-05-30T09:25:00+08:00',
+        riskLevel: 'Normal',
+        ruleSummary: '种子读数正常',
+      },
+    ],
+    sourceEvidence: iotSourceEvidence,
+  }
+}
+
+function buildLocalTelemetryResult(
+  point: IotMonitoringPoint,
+  metricCode: string,
+  value: number,
+  unit: string,
+): TelemetryIngestionResult {
+  const reading: TelemetryReading = {
+    pointCode: point.pointCode,
+    metricCode,
+    value,
+    unit,
+    collectedAt: new Date().toISOString(),
+    riskLevel: 'Critical',
+    ruleSummary: '当前值低于阈值',
+  }
+
+  return {
+    succeeded: true,
+    errorMessage: null,
+    pointCode: point.pointCode,
+    metricCode,
+    riskLevel: 'Critical',
+    ruleSummary: reading.ruleSummary,
+    reading,
     notFound: false,
   }
 }

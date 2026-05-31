@@ -10,6 +10,7 @@ public static class DependencyInjection
         services.AddSingleton<IOperationsDashboardService, OperationsDashboardService>();
         services.AddSingleton<IWorkOrderDispatchService, WorkOrderDispatchService>();
         services.AddSingleton<IAssetMaintenanceService, AssetMaintenanceService>();
+        services.AddSingleton<IIotIntegrationService, IotIntegrationService>();
         return services;
     }
 }

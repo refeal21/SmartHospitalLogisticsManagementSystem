@@ -90,6 +90,23 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
     await expect(page.getByText(/WO-MT-20260530-0002|WO-MT-20260530-0001/).first()).toBeVisible()
   })
 
+  test('客户物联点位接入支持字段查看和异常读数判定', async ({ page }) => {
+    await page.goto('/')
+
+    await expect(page.getByRole('heading', { name: '客户物联点位接入' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '点位目录' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '时序字段' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '阈值与读数' })).toBeVisible()
+
+    await page.getByRole('button', { name: /MEDGAS-O2-8F/ }).click()
+    await expect(page.getByText('BIM-IPD-F8-WARD').first()).toBeVisible()
+    await expect(page.getByText('氧气压力 / 医气压力').first()).toBeVisible()
+
+    await page.getByRole('button', { name: '模拟异常读数' }).click()
+    await expect(page.getByText('最新风险：严重')).toBeVisible()
+    await expect(page.getByText('MEDGAS-O2-8F / pressure')).toBeVisible()
+  })
+
   test('移动端不出现横向溢出并保留核心办事入口', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/')

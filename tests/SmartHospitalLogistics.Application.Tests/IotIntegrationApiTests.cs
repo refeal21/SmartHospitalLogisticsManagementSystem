@@ -1,0 +1,85 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc.Testing;
+using SmartHospitalLogistics.Domain;
+
+namespace SmartHospitalLogistics.Application.Tests;
+
+public sealed class IotIntegrationApiTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() }
+    };
+
+    private readonly HttpClient _client;
+
+    public IotIntegrationApiTests(WebApplicationFactory<Program> factory)
+    {
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task IotCatalogApiReturnsPointsAndSourceEvidence()
+    {
+        var catalog = await _client.GetFromJsonAsync<IotIntegrationCatalog>(
+            "/api/operations/iot-catalog",
+            JsonOptions);
+
+        Assert.NotNull(catalog);
+        Assert.NotEmpty(catalog.Systems);
+        Assert.NotEmpty(catalog.Points);
+        Assert.Contains(catalog.SourceEvidence, evidence => evidence.Sources.Contains("北建院"));
+    }
+
+    [Fact]
+    public async Task IotPointDetailApiReturnsMetricHistoryAndThresholds()
+    {
+        var detail = await _client.GetFromJsonAsync<IotPointDetail>(
+            "/api/operations/iot-points/MEDGAS-O2-8F",
+            JsonOptions);
+
+        Assert.NotNull(detail);
+        Assert.Equal("MEDGAS-O2-8F", detail.Point.PointCode);
+        Assert.NotEmpty(detail.ThresholdRules);
+        Assert.NotEmpty(detail.RecentReadings);
+    }
+
+    [Fact]
+    public async Task IotReadingApiEvaluatesCriticalRisk()
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/api/operations/iot-readings",
+            new TelemetryIngestionCommand(
+                "ENV-WARD-CO2-8F",
+                "co2",
+                1300m,
+                "ppm",
+                new DateTimeOffset(2026, 5, 30, 10, 10, 0, TimeSpan.FromHours(8))));
+
+        response.EnsureSuccessStatusCode();
+
+        var result = await response.Content.ReadFromJsonAsync<TelemetryIngestionResult>(JsonOptions);
+        Assert.True(result?.Succeeded);
+        Assert.Equal(TelemetryRiskLevel.Critical, result?.RiskLevel);
+    }
+
+    [Fact]
+    public async Task IotApisReturn404ForMissingPointAnd400ForUnknownMetric()
+    {
+        var missingPoint = await _client.GetAsync("/api/operations/iot-points/POINT-NOT-FOUND");
+        Assert.Equal(HttpStatusCode.NotFound, missingPoint.StatusCode);
+
+        var unknownMetric = await _client.PostAsJsonAsync(
+            "/api/operations/iot-readings",
+            new TelemetryIngestionCommand(
+                "MEDGAS-O2-8F",
+                "not-a-metric",
+                1m,
+                "MPa",
+                DateTimeOffset.UtcNow));
+        Assert.Equal(HttpStatusCode.BadRequest, unknownMetric.StatusCode);
+    }
+}

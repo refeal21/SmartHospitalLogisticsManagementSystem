@@ -217,6 +217,7 @@ h2 {
 
 .dispatch-panel,
 .asset-maintenance-panel,
+.iot-panel,
 .module-panel,
 .workflow-panel,
 .evidence-panel,
@@ -517,6 +518,92 @@ button {
 .asset-lifecycle-panel small {
   color: #647b90;
   font-size: 12px;
+}
+
+.iot-workbench {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(260px, 0.9fr) minmax(320px, 1fr) minmax(300px, 1fr);
+  gap: 10px;
+}
+
+.iot-workbench h2 {
+  margin-bottom: 8px;
+}
+
+.iot-system-grid,
+.iot-point-list,
+.iot-reading-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.iot-system-grid article,
+.iot-detail-panel,
+.iot-reading-panel article {
+  border: 1px solid #e0eaf2;
+  border-radius: 5px;
+  padding: 9px;
+  background: #fbfdff;
+}
+
+.iot-system-grid strong,
+.iot-system-grid span,
+.iot-reading-panel strong,
+.iot-reading-panel span,
+.iot-reading-panel small {
+  display: block;
+}
+
+.iot-system-grid span,
+.iot-reading-panel span,
+.iot-reading-panel small {
+  color: #637a8f;
+  font-size: 12px;
+}
+
+.iot-point-card {
+  width: 100%;
+  display: grid;
+  gap: 5px;
+  text-align: left;
+  background: #ffffff;
+  color: #183752;
+  border-color: #d8e6f0;
+}
+
+.iot-point-card.selected {
+  border-color: #1f74b7;
+  box-shadow: 0 0 0 2px rgba(31, 116, 183, 0.1);
+}
+
+.iot-point-card strong,
+.iot-point-card span,
+.iot-point-card small {
+  display: block;
+}
+
+.iot-point-card span,
+.iot-point-card small {
+  color: #637a8f;
+  font-size: 12px;
+}
+
+.iot-detail-panel {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+}
+
+.reading-card.Critical {
+  border-left: 3px solid #e55345;
+}
+
+.reading-card.Warning {
+  border-left: 3px solid #ef8b22;
+}
+
+.reading-card.Normal {
+  border-left: 3px solid #22a36c;
 }
 
 .dispatch-table {
@@ -921,6 +1008,10 @@ button {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .iot-workbench {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .dispatch-panel,
   .module-panel,
   .workflow-panel,
@@ -971,7 +1062,8 @@ button {
   .dispatch-row,
   .alert-item,
   .dispatch-workbench,
-  .asset-maintenance-workbench {
+  .asset-maintenance-workbench,
+  .iot-workbench {
     grid-template-columns: 1fr;
   }
 

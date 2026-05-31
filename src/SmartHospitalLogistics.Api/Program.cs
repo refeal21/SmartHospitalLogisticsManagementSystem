@@ -95,6 +95,22 @@ api.MapPost("/maintenance-tasks/{taskNo}/complete", (
     })
     .WithName("CompleteMaintenanceTask");
 
+api.MapGet("/iot-catalog", (IIotIntegrationService service) => service.GetCatalog())
+    .WithName("GetIotCatalog");
+
+api.MapGet("/iot-points/{pointCode}", (string pointCode, IIotIntegrationService service) =>
+    service.GetPointDetail(pointCode) is { } detail
+        ? Results.Ok(detail)
+        : Results.NotFound(new { error = $"IoT point {pointCode} was not found." }))
+    .WithName("GetIotPointDetail");
+
+api.MapPost("/iot-readings", (TelemetryIngestionCommand command, IIotIntegrationService service) =>
+    {
+        var result = service.IngestReading(command);
+        return ToTelemetryHttpResult(result);
+    })
+    .WithName("IngestTelemetryReading");
+
 app.Run();
 
 static IResult ToHttpResult(DispatchOperationResult result)
@@ -110,6 +126,18 @@ static IResult ToHttpResult(DispatchOperationResult result)
 }
 
 static IResult ToMaintenanceHttpResult(MaintenanceTaskOperationResult result)
+{
+    if (result.Succeeded)
+    {
+        return Results.Ok(result);
+    }
+
+    return result.NotFound
+        ? Results.NotFound(new { error = result.ErrorMessage })
+        : Results.BadRequest(new { error = result.ErrorMessage });
+}
+
+static IResult ToTelemetryHttpResult(TelemetryIngestionResult result)
 {
     if (result.Succeeded)
     {

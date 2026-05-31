@@ -77,6 +77,30 @@ public enum SignalStatus
     Critical
 }
 
+public enum IotSystemCategory
+{
+    StrongElectric,
+    Hvac,
+    WaterSupplyDrainage,
+    MedicalGas,
+    EnvironmentQuality,
+    Sewage
+}
+
+public enum TelemetryRiskLevel
+{
+    Normal,
+    Warning,
+    Critical
+}
+
+public enum ThresholdDirection
+{
+    Above,
+    Below,
+    OutsideRange
+}
+
 public sealed record SpatialLocation(
     string Campus,
     string Building,
@@ -357,6 +381,79 @@ public sealed record MaintenanceTaskOperationResult(
     MaintenanceTask? Task,
     MaintenanceGeneratedWorkOrder? GeneratedWorkOrder = null,
     bool NotFound = false);
+
+public sealed record IotSystemProfile(
+    IotSystemCategory Category,
+    string Name,
+    IReadOnlyList<string> Subsystems,
+    IReadOnlyList<string> Roles,
+    IReadOnlyList<string> Endpoints);
+
+public sealed record IotMetricDefinition(
+    string Code,
+    string Name,
+    string Unit,
+    string DataType,
+    string SourceField);
+
+public sealed record IotMonitoringPoint(
+    string PointCode,
+    string Name,
+    IotSystemCategory Category,
+    SpatialLocation Location,
+    string DeviceCode,
+    string ProtocolAdapter,
+    IReadOnlyList<IotMetricDefinition> Metrics,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
+
+public sealed record TelemetryThresholdRule(
+    string PointCode,
+    string MetricCode,
+    ThresholdDirection Direction,
+    decimal? WarningMin,
+    decimal? WarningMax,
+    decimal? CriticalMin,
+    decimal? CriticalMax,
+    string RuleSummary);
+
+public sealed record TelemetryReading(
+    string PointCode,
+    string MetricCode,
+    decimal Value,
+    string Unit,
+    DateTimeOffset CollectedAt,
+    TelemetryRiskLevel RiskLevel,
+    string RuleSummary);
+
+public sealed record TelemetryIngestionCommand(
+    string PointCode,
+    string MetricCode,
+    decimal Value,
+    string Unit,
+    DateTimeOffset CollectedAt);
+
+public sealed record TelemetryIngestionResult(
+    bool Succeeded,
+    string? ErrorMessage,
+    string PointCode,
+    string MetricCode,
+    TelemetryRiskLevel RiskLevel,
+    string RuleSummary,
+    TelemetryReading? Reading = null,
+    bool NotFound = false);
+
+public sealed record IotPointDetail(
+    IotMonitoringPoint Point,
+    IReadOnlyList<TelemetryThresholdRule> ThresholdRules,
+    IReadOnlyList<TelemetryReading> RecentReadings,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
+
+public sealed record IotIntegrationCatalog(
+    DateTimeOffset GeneratedAt,
+    IReadOnlyList<IotSystemProfile> Systems,
+    IReadOnlyList<IotMonitoringPoint> Points,
+    IReadOnlyList<TelemetryThresholdRule> ThresholdRules,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
 
 public sealed record FeatureEvidence(
     string FeatureName,

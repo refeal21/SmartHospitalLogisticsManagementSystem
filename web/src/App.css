@@ -275,6 +275,7 @@ h2 {
 .dispatch-panel,
 .asset-maintenance-panel,
 .iot-panel,
+.spatial-panel,
 .alert-panel,
 .module-panel,
 .workflow-panel,
@@ -914,6 +915,12 @@ button {
   color: #916112;
 }
 
+.spatial-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+  gap: 12px;
+}
+
 .floor-map {
   position: relative;
   min-height: 224px;
@@ -936,10 +943,25 @@ button {
   border-radius: 5px;
   background: #ffffff;
   display: grid;
-  place-items: center;
+  align-content: center;
+  gap: 3px;
   color: #173453;
   font-size: 13px;
+  padding: 8px;
+  text-align: left;
   z-index: 1;
+}
+
+.map-node strong,
+.map-node span,
+.map-node small {
+  display: block;
+}
+
+.map-node span,
+.map-node small {
+  color: #647b90;
+  font-size: 12px;
 }
 
 .map-node.alert {
@@ -947,9 +969,19 @@ button {
   background: #fff8eb;
 }
 
+.map-node.asset {
+  border-color: #22a36c;
+  background: #effaf3;
+}
+
 .map-node.workorder {
   border-color: #e55345;
   background: #fff0ee;
+}
+
+.map-node.selected {
+  border-color: #176fae;
+  box-shadow: inset 3px 0 0 #176fae;
 }
 
 .map-line {
@@ -965,6 +997,16 @@ button {
   display: grid;
   gap: 8px;
   margin-top: 10px;
+}
+
+.spatial-detail-panel {
+  border: 1px solid #e0eaf2;
+  border-radius: 5px;
+  padding: 10px;
+  background: #fbfdff;
+  display: grid;
+  align-content: start;
+  gap: 10px;
 }
 
 .space-summary div,
@@ -1272,7 +1314,12 @@ button {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .spatial-workbench {
+    grid-template-columns: 1fr;
+  }
+
   .dispatch-panel,
+  .spatial-panel,
   .alert-panel,
   .module-panel,
   .workflow-panel,

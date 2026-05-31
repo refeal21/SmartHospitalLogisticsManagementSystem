@@ -340,6 +340,28 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
     await expect(page.getByTestId('work-order-detail')).toContainText('客户物联告警联动')
   })
 
+  test('BIM空间点位可联动工单和资产详情', async ({ page }) => {
+    await page.goto('/#楼层视图')
+
+    await expect(page.getByRole('heading', { name: 'BIM 空间运维工作台' })).toBeVisible()
+    await expect(page.getByTestId('spatial-floor-map')).toBeVisible()
+
+    await page.getByTestId('spatial-floor-map').getByRole('button', { name: /医废暂存间负压异常处置/ }).click()
+    await expect(page.getByTestId('spatial-point-detail')).toContainText('WO-20260530-0001')
+    await expect(page.getByTestId('spatial-point-detail')).toContainText('BIM-LOG-F1-WASTE')
+    await page.getByTestId('spatial-point-detail').getByRole('button', { name: '打开关联工单' }).click()
+    await expect(page.getByRole('heading', { name: '工单调度', exact: true })).toBeVisible()
+    await expect(page.getByTestId('work-order-detail')).toContainText('医废暂存间负压异常处置')
+
+    await page.getByRole('button', { name: '楼层视图' }).click()
+    await page.getByTestId('spatial-floor-map').getByRole('button', { name: /住院 8F 医用气体分区阀箱/ }).click()
+    await expect(page.getByTestId('spatial-point-detail')).toContainText('MEDGAS-IPD-8F')
+    await expect(page.getByTestId('spatial-point-detail')).toContainText('BIM-IPD-F8-WARD')
+    await page.getByTestId('spatial-point-detail').getByRole('button', { name: '打开资产台账' }).click()
+    await expect(page.getByRole('heading', { name: '资产台账与巡检保养' })).toBeVisible()
+    await expect(page.getByText('MEDGAS-IPD-8F').first()).toBeVisible()
+  })
+
   test('左侧菜单切换到聚焦业务页面而不是所有模块堆叠', async ({ page }) => {
     await page.goto('/')
 

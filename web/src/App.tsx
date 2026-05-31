@@ -418,6 +418,21 @@ type IotIntegrationCatalog = {
   sourceEvidence: FeatureEvidence[]
 }
 
+type SpatialPointKind = 'workOrder' | 'asset' | 'alarm' | 'iot'
+type SpatialPointTone = 'workorder' | 'asset' | 'alert' | 'normal'
+
+type SpatialOperationPoint = {
+  id: string
+  kind: SpatialPointKind
+  entityId: string
+  title: string
+  subtitle: string
+  location: SpatialLocation
+  statusLabel: string
+  actionLabel: string
+  tone: SpatialPointTone
+}
+
 type TelemetryIngestionResult = {
   succeeded: boolean
   errorMessage?: string | null
@@ -1051,6 +1066,7 @@ const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = 
 
 const serviceWorkflowTabs = ['服务受理', '工单调度', '任务执行', '验收回访', '服务评价'] as const
 type ServiceWorkflowTab = (typeof serviceWorkflowTabs)[number]
+const spatialMenuItems = ['空间台账', '楼层视图', '设备点位', '告警点位', '工单点位']
 
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5248'
 
@@ -1061,6 +1077,15 @@ function pageFromMenuItem(item: string): WorkspacePage {
 
   if (item.includes('风险告警') || item.includes('预警') || item.includes('报警策略') || item.includes('医废处置')) {
     return 'alerts'
+  }
+
+  if (
+    item.includes('BIM') ||
+    item.includes('空间') ||
+    item.includes('楼层') ||
+    spatialMenuItems.some((menuItem) => item.includes(menuItem))
+  ) {
+    return 'spatial'
   }
 
   if (item.includes('服务') || item.includes('工单') || item.includes('任务') || item.includes('验收')) {
@@ -1088,10 +1113,6 @@ function pageFromMenuItem(item: string): WorkspacePage {
     item.includes('卫生间')
   ) {
     return 'iot'
-  }
-
-  if (item.includes('BIM') || item.includes('空间') || item.includes('楼层') || item.includes('点位')) {
-    return 'spatial'
   }
 
   return 'evidence'
@@ -1128,7 +1149,7 @@ function serviceTabFromMenuItem(item: string): ServiceWorkflowTab | null {
 }
 
 function App() {
-  const [dashboard, setDashboard] = useState(localDashboard)
+  const [, setDashboard] = useState(localDashboard)
   const [blueprint, setBlueprint] = useState(localBlueprint)
   const [dispatchBoard, setDispatchBoard] = useState(localDispatchBoard)
   const [selectedDetail, setSelectedDetail] = useState(() => buildLocalDetail(localWorkOrders[0]))
@@ -1144,6 +1165,7 @@ function App() {
     () => localMonitoringAlarmBoard.alarms[0] ?? null,
   )
   const [convertedAlarmDetail, setConvertedAlarmDetail] = useState<WorkOrderDetail | null>(null)
+  const [selectedSpatialPointId, setSelectedSpatialPointId] = useState<string | null>(null)
   const [source, setSource] = useState<'api' | 'local'>('local')
   const [activeMenuItem, setActiveMenuItem] = useState(() => initialMenuItem())
   const [activePage, setActivePage] = useState<WorkspacePage>(() => pageFromMenuItem(initialMenuItem()))
@@ -1267,6 +1289,59 @@ function App() {
   const activeAlarm = selectedAlarm ?? alarmBoard.alarms[0] ?? null
   const selectedAlarmEvidence = alarmBoard.sourceEvidence.length > 0 ? alarmBoard.sourceEvidence : alarmSourceEvidence
   const latestEvaluation = [...selectedDetail.timeline].reverse().find((entry) => entry.rating)
+  const spatialPoints = useMemo<SpatialOperationPoint[]>(
+    () => [
+      ...dispatchBoard.workOrders.map((order) => ({
+        id: `workOrder:${order.workOrderNo}`,
+        kind: 'workOrder' as const,
+        entityId: order.workOrderNo,
+        title: order.title,
+        subtitle: `${order.workOrderNo} / ${priorityLabels[order.priority]}`,
+        location: order.location,
+        statusLabel: statusLabels[order.status],
+        actionLabel: '打开关联工单',
+        tone: order.priority === 'Critical' || order.status === 'Escalated' ? 'workorder' as const : 'normal' as const,
+      })),
+      ...assetBoard.assets.map((asset) => ({
+        id: `asset:${asset.assetCode}`,
+        kind: 'asset' as const,
+        entityId: asset.assetCode,
+        title: asset.name,
+        subtitle: `${asset.assetCode} / ${asset.system}`,
+        location: asset.location,
+        statusLabel: statusLabels[asset.status],
+        actionLabel: '打开资产台账',
+        tone: asset.status === 'Fault' || asset.criticality === 'LifeSafety' ? 'asset' as const : 'normal' as const,
+      })),
+      ...alarmBoard.alarms
+        .filter((alarm) => alarm.status !== 'Closed')
+        .map((alarm) => ({
+          id: `alarm:${alarm.alarmNo}`,
+          kind: 'alarm' as const,
+          entityId: alarm.alarmNo,
+          title: alarm.title,
+          subtitle: `${telemetryRiskLabels[alarm.riskLevel]} / ${alarmStatusLabels[alarm.status]}`,
+          location: alarm.location,
+          statusLabel: alarmStatusLabels[alarm.status],
+          actionLabel: '打开预警处置',
+          tone: 'alert' as const,
+        })),
+      ...iotCatalog.points.map((point) => ({
+        id: `iot:${point.pointCode}`,
+        kind: 'iot' as const,
+        entityId: point.pointCode,
+        title: point.name,
+        subtitle: `${point.pointCode} / ${iotCategoryLabels[point.category]}`,
+        location: point.location,
+        statusLabel: point.protocolAdapter,
+        actionLabel: '打开物联点位',
+        tone: 'normal' as const,
+      })),
+    ],
+    [alarmBoard.alarms, assetBoard.assets, dispatchBoard.workOrders, iotCatalog.points],
+  )
+  const selectedSpatialPoint =
+    spatialPoints.find((point) => point.id === selectedSpatialPointId) ?? spatialPoints[0]
 
   function openWorkspacePage(item: string) {
     const nextPage = pageFromMenuItem(item)
@@ -1284,6 +1359,29 @@ function App() {
     setActiveMenuItem(tab)
     setActiveServiceTab(tab)
     window.history.replaceState(null, '', `#${encodeURIComponent(tab)}`)
+  }
+
+  async function openSpatialLinkedObject(point: SpatialOperationPoint) {
+    if (point.kind === 'workOrder') {
+      await loadDetail(point.entityId)
+      openServiceWorkflowTab('工单调度')
+      return
+    }
+
+    if (point.kind === 'asset') {
+      await loadAssetDetail(point.entityId)
+      openWorkspacePage('设备台账')
+      return
+    }
+
+    if (point.kind === 'alarm') {
+      selectMonitoringAlarm(point.entityId)
+      openWorkspacePage('预警池')
+      return
+    }
+
+    await loadIotPointDetail(point.entityId)
+    openWorkspacePage('环境点位')
   }
 
   async function createServiceIntakeWorkOrder() {
@@ -2359,21 +2457,93 @@ function App() {
 
           <section className="panel spatial-panel">
             <PanelHeader title="BIM 空间业务定位" meta="设备 / 告警 / 工单同图层" />
-            <div className="floor-map">
-              <span className="map-node workorder">医废间工单</span>
-              <span className="map-node alert">门诊医梯</span>
-              <span className="map-node normal">眼科病区</span>
-              <span className="map-node normal">冷站机房</span>
-              <span className="map-line" />
-            </div>
-            <div className="space-summary">
-              {dashboard.assets.map((asset) => (
-                <div key={asset.assetCode}>
-                  <strong>{asset.name}</strong>
-                  <span>{asset.location.bimElementId}</span>
+            {activePage === 'spatial' ? (
+              <>
+                <div className="spatial-workbench">
+                  <section>
+                    <h2>楼层业务图层</h2>
+                    <div className="floor-map" data-testid="spatial-floor-map">
+                      {spatialPoints.map((point) => (
+                        <button
+                          className={`map-node ${point.tone} ${selectedSpatialPoint?.id === point.id ? 'selected' : ''}`}
+                          key={point.id}
+                          type="button"
+                          onClick={() => setSelectedSpatialPointId(point.id)}
+                        >
+                          <strong>{point.title}</strong>
+                          <span>{point.subtitle}</span>
+                          <small>{point.location.bimElementId}</small>
+                        </button>
+                      ))}
+                      <span className="map-line" />
+                    </div>
+                  </section>
+
+                  <section className="spatial-detail-panel" data-testid="spatial-point-detail">
+                    <h2>空间点位详情</h2>
+                    {selectedSpatialPoint ? (
+                      <>
+                        <div className="detail-title">
+                          <strong>{selectedSpatialPoint.title}</strong>
+                          <span>{selectedSpatialPoint.statusLabel}</span>
+                        </div>
+                        <dl className="detail-list">
+                          <div>
+                            <dt>对象</dt>
+                            <dd>{selectedSpatialPoint.entityId}</dd>
+                          </div>
+                          <div>
+                            <dt>位置</dt>
+                            <dd>{selectedSpatialPoint.location.building} / {selectedSpatialPoint.location.room}</dd>
+                          </div>
+                          <div>
+                            <dt>BIM</dt>
+                            <dd>{selectedSpatialPoint.location.bimElementId}</dd>
+                          </div>
+                        </dl>
+                        <button type="button" onClick={() => void openSpatialLinkedObject(selectedSpatialPoint)}>
+                          {selectedSpatialPoint.actionLabel}
+                        </button>
+                      </>
+                    ) : (
+                      <p>暂无空间点位</p>
+                    )}
+                  </section>
                 </div>
-              ))}
-            </div>
+                <div className="space-summary">
+                  <div>
+                    <strong>{dispatchBoard.workOrders.length} 个工单点位</strong>
+                    <span>调度池工单按 BIM 构件定位</span>
+                  </div>
+                  <div>
+                    <strong>{assetBoard.assets.length} 个资产点位</strong>
+                    <span>设备设施台账与空间绑定</span>
+                  </div>
+                  <div>
+                    <strong>{alarmBoard.alarms.length} 个告警点位</strong>
+                    <span>物联阈值事件可转处置工单</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="floor-map">
+                  <span className="map-node workorder">医废间工单</span>
+                  <span className="map-node alert">门诊医梯</span>
+                  <span className="map-node normal">眼科病区</span>
+                  <span className="map-node normal">冷站机房</span>
+                  <span className="map-line" />
+                </div>
+                <div className="space-summary">
+                  {assetBoard.assets.map((asset) => (
+                    <div key={asset.assetCode}>
+                      <strong>{asset.name}</strong>
+                      <span>{asset.location.bimElementId}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </section>
 
           <section className="panel alert-panel">

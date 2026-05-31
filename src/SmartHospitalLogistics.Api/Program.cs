@@ -174,6 +174,15 @@ api.MapGet("/power-distribution-circuits/{circuitCode}", (string circuitCode, IP
         : Results.NotFound(new { error = $"Power distribution circuit {circuitCode} was not found." }))
     .WithName("GetPowerDistributionCircuitDetail");
 
+api.MapGet("/hvac-board", (IHvacService service) => service.GetBoard())
+    .WithName("GetHvacBoard");
+
+api.MapGet("/hvac-cooling-loops/{loopCode}", (string loopCode, IHvacService service) =>
+    service.GetLoopDetail(loopCode) is { } detail
+        ? Results.Ok(detail)
+        : Results.NotFound(new { error = $"HVAC cooling loop {loopCode} was not found." }))
+    .WithName("GetHvacCoolingLoopDetail");
+
 app.Run();
 
 static IResult ToHttpResult(DispatchOperationResult result)

@@ -21,6 +21,7 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
             services.RemoveAll<IMonitoringAlarmPersistence>();
             services.RemoveAll<IMedicalGasPersistence>();
             services.RemoveAll<IPowerDistributionPersistence>();
+            services.RemoveAll<IHvacPersistence>();
             services.RemoveAll<WorkOrderDispatchService>();
             services.RemoveAll<IWorkOrderDispatchService>();
             services.RemoveAll<IWorkOrderIntakeService>();
@@ -31,6 +32,7 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
             services.RemoveAll<IIotIntegrationService>();
             services.RemoveAll<IMedicalGasService>();
             services.RemoveAll<IPowerDistributionService>();
+            services.RemoveAll<IHvacService>();
 
             services.AddSingleton<IWorkOrderPersistence>(_ =>
                 new SqliteWorkOrderPersistence(Path.Combine(_dbDirectory, "work-orders.db")));
@@ -44,6 +46,8 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
                 new SqliteMedicalGasPersistence(Path.Combine(_dbDirectory, "medical-gas.db")));
             services.AddSingleton<IPowerDistributionPersistence>(_ =>
                 new SqlitePowerDistributionPersistence(Path.Combine(_dbDirectory, "power.db")));
+            services.AddSingleton<IHvacPersistence>(_ =>
+                new SqliteHvacPersistence(Path.Combine(_dbDirectory, "hvac.db")));
 
             services.AddSingleton<WorkOrderDispatchService>();
             services.AddSingleton<IWorkOrderDispatchService>(provider => provider.GetRequiredService<WorkOrderDispatchService>());
@@ -55,6 +59,7 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
             services.AddSingleton<IIotIntegrationService, IotIntegrationService>();
             services.AddSingleton<IMedicalGasService, MedicalGasService>();
             services.AddSingleton<IPowerDistributionService, PowerDistributionService>();
+            services.AddSingleton<IHvacService, HvacService>();
         });
     }
 

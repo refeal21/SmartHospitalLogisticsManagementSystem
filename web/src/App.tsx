@@ -511,6 +511,52 @@ type PowerDistributionCircuitDetail = {
   sourceEvidence: FeatureEvidence[]
 }
 
+type HvacLoopStatus = 'Normal' | 'Warning' | 'Critical' | 'Maintenance'
+
+type HvacLoop = {
+  loopCode: string
+  name: string
+  system: string
+  location: SpatialLocation
+  responsibleTeam: string
+  monitoringPointCode: string
+  assetCode: string
+  status: HvacLoopStatus
+  monitoredMetrics: string[]
+  riskSummary: string
+  sourceEvidence: FeatureEvidence[]
+}
+
+type HvacBoardKpi = {
+  loopCount: number
+  abnormalLoops: number
+  activeAlarms: number
+  openWorkOrders: number
+  dueMaintenanceTasks: number
+}
+
+type HvacBoard = {
+  generatedAt: string
+  loops: HvacLoop[]
+  monitoringPoints: IotMonitoringPoint[]
+  hvacAssets: AssetLedgerItem[]
+  activeAlarms: MonitoringAlarmEvent[]
+  openWorkOrders: WorkOrder[]
+  dueMaintenanceTasks: MaintenanceTask[]
+  sourceEvidence: FeatureEvidence[]
+  kpis: HvacBoardKpi
+}
+
+type HvacLoopDetail = {
+  loop: HvacLoop
+  monitoringPoint?: IotPointDetail | null
+  hvacAsset?: AssetMaintenanceDetail | null
+  activeAlarms: MonitoringAlarmEvent[]
+  openWorkOrders: WorkOrder[]
+  maintenanceTasks: MaintenanceTask[]
+  sourceEvidence: FeatureEvidence[]
+}
+
 type SpatialPointKind = 'workOrder' | 'asset' | 'alarm' | 'iot'
 type SpatialPointTone = 'workorder' | 'asset' | 'alert' | 'normal'
 
@@ -545,6 +591,7 @@ type WorkspacePage =
   | 'alerts'
   | 'medicalGas'
   | 'powerDistribution'
+  | 'hvac'
   | 'spatial'
   | 'evidence'
 
@@ -1015,6 +1062,21 @@ const localIotCatalog: IotIntegrationCatalog = {
       ],
       sourceEvidence: iotSourceEvidence,
     },
+    {
+      pointCode: 'HVAC-CHW-B1-02',
+      name: '冷站 2 号冷冻泵运行点',
+      category: 'Hvac',
+      location: locations.energy,
+      deviceCode: 'CHW-P-02',
+      protocolAdapter: 'bacnet-adapter',
+      metrics: [
+        { code: 'supply_temp', name: '供水温度', unit: 'C', dataType: 'decimal', sourceField: '供回水温' },
+        { code: 'pressure', name: '压力', unit: 'MPa', dataType: 'decimal', sourceField: '压力' },
+        { code: 'flow', name: '流量', unit: 'm3/h', dataType: 'decimal', sourceField: '流量' },
+        { code: 'energy', name: '能耗', unit: 'kWh', dataType: 'decimal', sourceField: '能耗' },
+      ],
+      sourceEvidence: iotSourceEvidence,
+    },
   ],
   thresholdRules: [
     {
@@ -1026,6 +1088,16 @@ const localIotCatalog: IotIntegrationCatalog = {
       criticalMin: 190,
       criticalMax: 255,
       ruleSummary: '低压进线电压需保持在安全范围',
+    },
+    {
+      pointCode: 'HVAC-CHW-B1-02',
+      metricCode: 'pressure',
+      direction: 'OutsideRange',
+      warningMin: 0.25,
+      warningMax: 0.65,
+      criticalMin: 0.18,
+      criticalMax: 0.75,
+      ruleSummary: '冷冻泵压力需保持稳定',
     },
     {
       pointCode: 'MEDGAS-O2-8F',
@@ -1210,6 +1282,65 @@ const localPowerDistributionBoard: PowerDistributionBoard = {
   },
 }
 
+const hvacSourceEvidence: FeatureEvidence[] = [
+  {
+    featureName: '暖通/冷热站专项运行',
+    sources: ['北建院', '中科医信', 'PPT'],
+    evidenceSummary: '北建院客户数据定义供暖空调系统、传感器、安装位置、采集字段、角色和使用端；中科医信竞品包含冷热站、暖通监测、巡检保养和工单颗粒度；PPT 定义 BIM 智慧运维集成边界。',
+  },
+  {
+    featureName: '暖通告警巡检工单闭环',
+    sources: ['北建院', '中科医信', 'PPT'],
+    evidenceSummary: '供回水温度、压力、流量、能耗、启停状态和故障状态必须能进入预警池，并与冷冻泵资产、巡检任务和工单调度贯通。',
+  },
+]
+
+const localHvacTask: MaintenanceTask = {
+  taskNo: 'MT-20260530-0003',
+  planCode: 'MP-CHW-PUMP',
+  assetCode: 'CHW-B1-02',
+  title: '冷冻泵运行与能耗巡检',
+  taskType: 'PreventiveMaintenance',
+  status: 'Due',
+  priority: 'High',
+  scheduledAt: '2026-05-30T09:10:00+08:00',
+  dueAt: '2026-05-30T11:30:00+08:00',
+  responsibleTeam: '暖通班工作人员',
+  checklistResults: [],
+}
+
+const localHvacBoard: HvacBoard = {
+  generatedAt: '2026-05-30T09:30:00+08:00',
+  loops: [
+    {
+      loopCode: 'HVAC-LOOP-B1-CHW',
+      name: 'B1 冷站冷冻水循环回路',
+      system: '暖通/冷热站',
+      location: locations.energy,
+      responsibleTeam: '暖通班工作人员',
+      monitoringPointCode: 'HVAC-CHW-B1-02',
+      assetCode: 'CHW-B1-02',
+      status: 'Warning',
+      monitoredMetrics: ['supply_temp', 'pressure', 'flow', 'energy'],
+      riskSummary: '冷冻水回路压力、流量、供回水温度和能耗需要按阈值预警，并联动冷冻泵巡检与一站式工单调度。',
+      sourceEvidence: hvacSourceEvidence,
+    },
+  ],
+  monitoringPoints: localIotCatalog.points.filter((point) => point.pointCode === 'HVAC-CHW-B1-02'),
+  hvacAssets: localAssetMaintenanceBoard.assets.filter((asset) => asset.assetCode === 'CHW-B1-02'),
+  activeAlarms: [],
+  openWorkOrders: [],
+  dueMaintenanceTasks: [localHvacTask],
+  sourceEvidence: hvacSourceEvidence,
+  kpis: {
+    loopCount: 1,
+    abnormalLoops: 1,
+    activeAlarms: 0,
+    openWorkOrders: 0,
+    dueMaintenanceTasks: 1,
+  },
+}
+
 const statusLabels: Record<WorkOrderStatus | FacilityStatus | SignalStatus, string> = {
   New: '新建',
   Dispatched: '已派工',
@@ -1293,6 +1424,13 @@ const powerDistributionStatusLabels: Record<PowerDistributionCircuitStatus, stri
   Maintenance: '保养中',
 }
 
+const hvacStatusLabels: Record<HvacLoopStatus, string> = {
+  Normal: '正常',
+  Warning: '预警',
+  Critical: '严重',
+  Maintenance: '保养中',
+}
+
 const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = {
   overview: {
     title: '后勤运营总览',
@@ -1322,6 +1460,10 @@ const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = 
     title: '供配电/强电专项工作台',
     summary: '聚合低压进线回路、电表点位、配电柜资产、巡检任务、电压告警和工单调度，让强电运行进入可追溯闭环。',
   },
+  hvac: {
+    title: '暖通/冷热站专项工作台',
+    summary: '聚合冷站冷冻水回路、BAS 点位、冷冻泵资产、巡检任务、压力告警和工单调度，让冷热源运行形成闭环。',
+  },
   spatial: {
     title: 'BIM 空间运维工作台',
     summary: '聚焦空间定位：设备、告警、工单和班组负载在同一空间语境里联动。',
@@ -1340,6 +1482,17 @@ const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5248'
 
 function pageFromMenuItem(item: string): WorkspacePage {
   const normalized = item.toLowerCase()
+  if (
+    normalized.includes('hvac') ||
+    normalized.includes('chw') ||
+    item.includes('暖通') ||
+    item.includes('冷热站') ||
+    item.includes('冷站') ||
+    item.includes('供暖空调')
+  ) {
+    return 'hvac'
+  }
+
   if (
     normalized.includes('power-distribution') ||
     normalized.includes('pwr') ||
@@ -1447,6 +1600,9 @@ function App() {
     buildLocalPowerDistributionDetail('PWR-CIRCUIT-B1-LV-IN'),
   )
   const [convertedPowerDistributionDetail, setConvertedPowerDistributionDetail] = useState<WorkOrderDetail | null>(null)
+  const [hvacBoard, setHvacBoard] = useState(localHvacBoard)
+  const [hvacLoopDetail, setHvacLoopDetail] = useState(() => buildLocalHvacDetail('HVAC-LOOP-B1-CHW'))
+  const [convertedHvacDetail, setConvertedHvacDetail] = useState<WorkOrderDetail | null>(null)
   const [iotCatalog, setIotCatalog] = useState(localIotCatalog)
   const [selectedIotPoint, setSelectedIotPoint] = useState(() => buildLocalIotPointDetail('MEDGAS-O2-8F'))
   const [lastTelemetryResult, setLastTelemetryResult] = useState<TelemetryIngestionResult | null>(null)
@@ -1488,6 +1644,7 @@ function App() {
       fetch(`${apiBase}/api/operations/monitoring-alarms`, { signal: controller.signal }),
       fetch(`${apiBase}/api/operations/medical-gas-board`, { signal: controller.signal }),
       fetch(`${apiBase}/api/operations/power-distribution-board`, { signal: controller.signal }),
+      fetch(`${apiBase}/api/operations/hvac-board`, { signal: controller.signal }),
     ])
       .then(async ([
         dashboardResponse,
@@ -1498,6 +1655,7 @@ function App() {
         alarmBoardResponse,
         medicalGasBoardResponse,
         powerDistributionBoardResponse,
+        hvacBoardResponse,
       ]) => {
         if (
           !dashboardResponse.ok ||
@@ -1507,7 +1665,8 @@ function App() {
           !iotCatalogResponse.ok ||
           !alarmBoardResponse.ok ||
           !medicalGasBoardResponse.ok ||
-          !powerDistributionBoardResponse.ok
+          !powerDistributionBoardResponse.ok ||
+          !hvacBoardResponse.ok
         ) {
           throw new Error('Logistics API unavailable')
         }
@@ -1518,6 +1677,7 @@ function App() {
         const fetchedAlarmBoard = (await alarmBoardResponse.json()) as MonitoringAlarmBoard
         const fetchedMedicalGasBoard = (await medicalGasBoardResponse.json()) as MedicalGasBoard
         const fetchedPowerDistributionBoard = (await powerDistributionBoardResponse.json()) as PowerDistributionBoard
+        const fetchedHvacBoard = (await hvacBoardResponse.json()) as HvacBoard
         setDashboard((await dashboardResponse.json()) as OperationsDashboard)
         setBlueprint((await blueprintResponse.json()) as LogisticsBlueprint)
         setDispatchBoard(board)
@@ -1526,6 +1686,7 @@ function App() {
         setAlarmBoard(fetchedAlarmBoard)
         setMedicalGasBoard(fetchedMedicalGasBoard)
         setPowerDistributionBoard(fetchedPowerDistributionBoard)
+        setHvacBoard(fetchedHvacBoard)
         setSelectedAlarm(fetchedAlarmBoard.alarms[0] ?? null)
         setSource('api')
 
@@ -1579,6 +1740,16 @@ function App() {
           })
           if (circuitResponse.ok) {
             setPowerDistributionCircuitDetail((await circuitResponse.json()) as PowerDistributionCircuitDetail)
+          }
+        }
+
+        const firstHvacLoopCode = fetchedHvacBoard.loops[0]?.loopCode
+        if (firstHvacLoopCode) {
+          const loopResponse = await fetch(`${apiBase}/api/operations/hvac-cooling-loops/${firstHvacLoopCode}`, {
+            signal: controller.signal,
+          })
+          if (loopResponse.ok) {
+            setHvacLoopDetail((await loopResponse.json()) as HvacLoopDetail)
           }
         }
       })
@@ -2090,6 +2261,184 @@ function App() {
         ? convertedPowerDistributionDetail
         : source === 'api'
           ? await loadWorkOrderDetailForAlarm(workOrderNo, powerDistributionCircuitDetail.activeAlarms[0])
+          : null
+
+    if (detail) {
+      setSelectedDetail(detail)
+    }
+    openServiceWorkflowTab(serviceWorkflowTabs[1])
+  }
+
+  async function loadHvacLoopDetail(loopCode: string, forceApi = false) {
+    if (source === 'api' || forceApi) {
+      const response = await fetch(`${apiBase}/api/operations/hvac-cooling-loops/${loopCode}`)
+      if (response.ok) {
+        setHvacLoopDetail((await response.json()) as HvacLoopDetail)
+        return
+      }
+    }
+
+    setHvacLoopDetail(buildLocalHvacDetail(loopCode))
+  }
+
+  async function refreshHvacBoard(loopCode = hvacLoopDetail.loop.loopCode) {
+    if (source !== 'api') {
+      return
+    }
+
+    const boardResponse = await fetch(`${apiBase}/api/operations/hvac-board`)
+    if (boardResponse.ok) {
+      setHvacBoard((await boardResponse.json()) as HvacBoard)
+    }
+
+    const detailResponse = await fetch(`${apiBase}/api/operations/hvac-cooling-loops/${loopCode}`)
+    if (detailResponse.ok) {
+      setHvacLoopDetail((await detailResponse.json()) as HvacLoopDetail)
+    }
+  }
+
+  function applyHvacAlarm(alarm: MonitoringAlarmEvent) {
+    setHvacBoard((current) => {
+      const alarms = [alarm, ...current.activeAlarms.filter((item) => item.alarmNo !== alarm.alarmNo)]
+      return {
+        ...current,
+        activeAlarms: alarms,
+        loops: current.loops.map((loop) =>
+          loop.monitoringPointCode === alarm.pointCode ? { ...loop, status: 'Critical' } : loop,
+        ),
+        kpis: {
+          ...current.kpis,
+          activeAlarms: alarms.length,
+          abnormalLoops: current.kpis.abnormalLoops || 1,
+        },
+      }
+    })
+    setHvacLoopDetail((current) => ({
+      ...current,
+      loop: { ...current.loop, status: 'Critical' },
+      activeAlarms: [alarm, ...current.activeAlarms.filter((item) => item.alarmNo !== alarm.alarmNo)],
+    }))
+  }
+
+  function applyHvacWorkOrderDetail(detail: WorkOrderDetail) {
+    setConvertedHvacDetail(detail)
+    setHvacBoard((current) => {
+      const orders = [detail.workOrder, ...current.openWorkOrders.filter((item) => item.workOrderNo !== detail.workOrder.workOrderNo)]
+      return {
+        ...current,
+        openWorkOrders: orders,
+        kpis: {
+          ...current.kpis,
+          openWorkOrders: orders.length,
+        },
+      }
+    })
+    setHvacLoopDetail((current) => ({
+      ...current,
+      openWorkOrders: [
+        detail.workOrder,
+        ...current.openWorkOrders.filter((item) => item.workOrderNo !== detail.workOrder.workOrderNo),
+      ],
+    }))
+  }
+
+  async function ingestHvacCriticalTelemetry() {
+    const point =
+      iotCatalog.points.find((item) => item.pointCode === hvacLoopDetail.loop.monitoringPointCode) ??
+      localIotCatalog.points.find((item) => item.pointCode === 'HVAC-CHW-B1-02')!
+    const metricCode = point.metrics.find((metric) => metric.code === 'pressure')?.code ?? point.metrics[0]?.code ?? 'pressure'
+    const unit = point.metrics.find((metric) => metric.code === metricCode)?.unit ?? 'MPa'
+
+    if (source === 'api') {
+      const response = await fetch(`${apiBase}/api/operations/iot-readings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pointCode: point.pointCode,
+          metricCode,
+          value: 0.8,
+          unit,
+          collectedAt: new Date().toISOString(),
+        }),
+      })
+      if (response.ok) {
+        const result = (await response.json()) as TelemetryIngestionResult
+        applyTelemetryResult(result)
+        await refreshMonitoringAlarms({ pointCode: result.pointCode, metricCode: result.metricCode })
+        await refreshHvacBoard()
+        return
+      }
+    }
+
+    const result = buildLocalTelemetryResult(point, metricCode, 0.8, unit)
+    applyTelemetryResult(result)
+    if (result.reading) {
+      const alarm = buildLocalAlarmFromTelemetry(point, result.reading)
+      applyAlarmUpdate(alarm)
+      applyHvacAlarm(alarm)
+    }
+  }
+
+  async function convertHvacAlarmToWorkOrder() {
+    const alarm = hvacLoopDetail.activeAlarms[0] ?? hvacBoard.activeAlarms[0]
+    if (!alarm) {
+      return
+    }
+
+    if (source === 'api' && alarm.status !== 'ConvertedToWorkOrder') {
+      const response = await fetch(`${apiBase}/api/operations/monitoring-alarms/${alarm.alarmNo}/convert-to-work-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operator: '暖通专项调度员',
+          targetTeam: hvacLoopDetail.loop.responsibleTeam,
+          remark: '冷站压力告警转入一站式工单调度',
+        }),
+      })
+      if (response.ok) {
+        const convertedAlarm = (await response.json()) as MonitoringAlarmEvent
+        applyAlarmUpdate(convertedAlarm)
+        const detail = convertedAlarm.workOrderNo
+          ? await loadWorkOrderDetailForAlarm(convertedAlarm.workOrderNo, convertedAlarm)
+          : null
+        if (detail) {
+          applyGeneratedWorkOrderDetail(detail, { openDispatch: false })
+          applyHvacWorkOrderDetail(detail)
+        }
+        await refreshHvacBoard()
+        return
+      }
+    }
+
+    const convertedAlarm: MonitoringAlarmEvent = {
+      ...alarm,
+      status: 'ConvertedToWorkOrder',
+      workOrderNo: alarm.workOrderNo ?? buildAlarmWorkOrderNo(alarm),
+      acknowledgedBy: alarm.acknowledgedBy ?? hvacLoopDetail.loop.responsibleTeam,
+      acknowledgedAt: alarm.acknowledgedAt ?? new Date().toISOString(),
+      lastRemark: '冷站压力告警转入一站式工单调度',
+    }
+    const detail = buildLocalAlarmWorkOrderDetail(convertedAlarm)
+    applyAlarmUpdate(convertedAlarm)
+    applyGeneratedWorkOrderDetail(detail, { openDispatch: false })
+    applyHvacAlarm(convertedAlarm)
+    applyHvacWorkOrderDetail(detail)
+  }
+
+  async function openConvertedHvacWorkOrder() {
+    const workOrderNo =
+      convertedHvacDetail?.workOrder.workOrderNo ??
+      hvacLoopDetail.openWorkOrders[0]?.workOrderNo ??
+      hvacBoard.openWorkOrders[0]?.workOrderNo
+    if (!workOrderNo) {
+      return
+    }
+
+    const detail =
+      convertedHvacDetail?.workOrder.workOrderNo === workOrderNo
+        ? convertedHvacDetail
+        : source === 'api'
+          ? await loadWorkOrderDetailForAlarm(workOrderNo, hvacLoopDetail.activeAlarms[0])
           : null
 
     if (detail) {
@@ -3369,6 +3718,131 @@ function App() {
             </div>
           </section>
 
+          <section className="panel hvac-panel">
+            <PanelHeader title="暖通/冷热站专项" meta="回路 / BAS点位 / 冷冻泵 / 巡检 / 告警 / 工单" />
+            <div className="medical-gas-workbench" data-testid="hvac-board">
+              <section className="medical-gas-summary">
+                <h2>专项总览</h2>
+                <div className="medical-gas-kpis">
+                  <article>
+                    <span>回路</span>
+                    <strong>{hvacBoard.kpis.loopCount}</strong>
+                  </article>
+                  <article>
+                    <span>异常回路</span>
+                    <strong>{hvacBoard.kpis.abnormalLoops}</strong>
+                  </article>
+                  <article>
+                    <span>活动告警</span>
+                    <strong>{hvacBoard.kpis.activeAlarms}</strong>
+                  </article>
+                  <article>
+                    <span>待办巡检</span>
+                    <strong>{hvacBoard.kpis.dueMaintenanceTasks}</strong>
+                  </article>
+                </div>
+                {hvacBoard.loops.map((loop) => (
+                  <button
+                    className={`medical-gas-zone-card ${hvacLoopDetail.loop.loopCode === loop.loopCode ? 'selected' : ''}`}
+                    key={loop.loopCode}
+                    type="button"
+                    onClick={() => void loadHvacLoopDetail(loop.loopCode)}
+                  >
+                    <strong>{loop.name}</strong>
+                    <span>{loop.loopCode} / {hvacStatusLabels[loop.status]}</span>
+                    <small>{loop.location.building} / {loop.location.room} / {loop.location.bimElementId}</small>
+                  </button>
+                ))}
+              </section>
+
+              <section className="medical-gas-zone-detail">
+                <h2>回路详情</h2>
+                <div className="detail-title">
+                  <strong>{hvacLoopDetail.loop.name}</strong>
+                  <span>{hvacStatusLabels[hvacLoopDetail.loop.status]}</span>
+                </div>
+                <dl className="detail-list">
+                  <div>
+                    <dt>BIM</dt>
+                    <dd>{hvacLoopDetail.loop.location.bimElementId}</dd>
+                  </div>
+                  <div>
+                    <dt>点位</dt>
+                    <dd>{hvacLoopDetail.loop.monitoringPointCode}</dd>
+                  </div>
+                  <div>
+                    <dt>责任</dt>
+                    <dd>{hvacLoopDetail.loop.responsibleTeam}</dd>
+                  </div>
+                  <div>
+                    <dt>来源</dt>
+                    <dd>{hvacLoopDetail.sourceEvidence.flatMap((item) => item.sources).join('、')}</dd>
+                  </div>
+                </dl>
+                <p>{hvacLoopDetail.loop.riskSummary}</p>
+              </section>
+
+              <section className="medical-gas-linked">
+                <h2>点位与资产</h2>
+                <article>
+                  <strong>{hvacLoopDetail.monitoringPoint?.point.pointCode ?? hvacLoopDetail.loop.monitoringPointCode}</strong>
+                  <span>{hvacLoopDetail.monitoringPoint?.point.name ?? '冷站运行点位'}</span>
+                  <small>{hvacLoopDetail.monitoringPoint?.point.metrics.map((metric) => `${metric.name}/${metric.sourceField}`).join('、')}</small>
+                </article>
+                <article>
+                  <strong>{hvacLoopDetail.hvacAsset?.asset.assetCode ?? hvacLoopDetail.loop.assetCode}</strong>
+                  <span>{hvacLoopDetail.hvacAsset?.asset.name ?? '冷站冷冻泵'}</span>
+                  <small>{hvacLoopDetail.hvacAsset?.asset.maintenanceStrategy ?? '月巡检 + 压力阈值告警转工单'}</small>
+                </article>
+                {hvacLoopDetail.maintenanceTasks.map((task) => (
+                  <article key={task.taskNo}>
+                    <strong>{task.taskNo}</strong>
+                    <span>{task.title}</span>
+                    <small>{maintenanceStatusLabels[task.status]} / {priorityLabels[task.priority]}</small>
+                  </article>
+                ))}
+              </section>
+
+              <section className="medical-gas-actions">
+                <h2>告警与工单</h2>
+                <div className="action-bar">
+                  <button data-testid="hvac-ingest-critical" type="button" onClick={() => void ingestHvacCriticalTelemetry()}>
+                    模拟压力异常
+                  </button>
+                  <button data-testid="hvac-convert-workorder" type="button" onClick={() => void convertHvacAlarmToWorkOrder()}>
+                    告警转工单
+                  </button>
+                  <button data-testid="hvac-open-dispatch" type="button" onClick={() => void openConvertedHvacWorkOrder()}>
+                    进入调度池
+                  </button>
+                </div>
+                <div className="medical-gas-flow-list">
+                  {hvacLoopDetail.activeAlarms.map((alarm) => (
+                    <article key={alarm.alarmNo}>
+                      <strong>{alarm.alarmNo}</strong>
+                      <span>{alarm.pointCode} / {telemetryRiskLabels[alarm.riskLevel]} / {alarmStatusLabels[alarm.status]}</span>
+                      <small>{alarm.workOrderNo ?? '尚未转工单'}</small>
+                    </article>
+                  ))}
+                  {hvacLoopDetail.openWorkOrders.map((order) => (
+                    <article key={order.workOrderNo}>
+                      <strong>{order.workOrderNo}</strong>
+                      <span>{order.title}</span>
+                      <small>{order.location.bimElementId}</small>
+                    </article>
+                  ))}
+                  {convertedHvacDetail ? (
+                    <article>
+                      <strong>{convertedHvacDetail.workOrder.workOrderNo}</strong>
+                      <span>{convertedHvacDetail.sourceEvidence.map((item) => item.featureName).join('、')}</span>
+                      <small>{convertedHvacDetail.location.bimElementId}</small>
+                    </article>
+                  ) : null}
+                </div>
+              </section>
+            </div>
+          </section>
+
           <section className="panel spatial-panel">
             <PanelHeader title="BIM 空间业务定位" meta="设备 / 告警 / 工单同图层" />
             {activePage === 'spatial' ? (
@@ -3828,6 +4302,55 @@ function buildLocalPowerDistributionDetail(circuitCode: string): PowerDistributi
   }
 }
 
+function buildLocalHvacDetail(loopCode: string): HvacLoopDetail {
+  const loop =
+    localHvacBoard.loops.find((item) => item.loopCode === loopCode) ??
+    localHvacBoard.loops[0]
+  const hvacAsset =
+    localAssetMaintenanceBoard.assets.find((asset) => asset.assetCode === loop.assetCode) ??
+    localHvacBoard.hvacAssets[0]
+
+  return {
+    loop,
+    monitoringPoint: buildLocalIotPointDetail(loop.monitoringPointCode),
+    hvacAsset: {
+      asset: hvacAsset,
+      plans: [
+        {
+          planCode: 'MP-CHW-PUMP',
+          assetCode: loop.assetCode,
+          name: '冷冻泵运行与能耗巡检',
+          taskType: 'PreventiveMaintenance',
+          cycleDays: 30,
+          nextDueAt: '2026-05-30T11:30:00+08:00',
+          responsibleTeam: loop.responsibleTeam,
+          checklistTemplate: [
+            { code: 'CHK-PRESSURE', name: '水系统压差', standard: '压差稳定且无异常波动', required: true },
+            { code: 'CHK-CURRENT', name: '运行电流', standard: '电流在额定范围内', required: true },
+            { code: 'CHK-ENERGY', name: '能耗趋势', standard: '能耗趋势无夜间异常抬升', required: true },
+          ],
+          sourceEvidence: hvacSourceEvidence,
+        },
+      ],
+      tasks: [localHvacTask],
+      lifecycle: [
+        {
+          occurredAt: '2026-05-28T09:30:00+08:00',
+          assetCode: loop.assetCode,
+          eventType: '能耗复核',
+          operator: loop.responsibleTeam,
+          summary: '夜间节能策略复核通过',
+        },
+      ],
+      sourceEvidence: hvacSourceEvidence,
+    },
+    activeAlarms: localHvacBoard.activeAlarms.filter((alarm) => alarm.pointCode === loop.monitoringPointCode),
+    openWorkOrders: localHvacBoard.openWorkOrders.filter((order) => order.location.bimElementId === loop.location.bimElementId),
+    maintenanceTasks: localHvacBoard.dueMaintenanceTasks.filter((task) => task.assetCode === loop.assetCode),
+    sourceEvidence: hvacSourceEvidence,
+  }
+}
+
 function buildMaintenanceWorkOrderDetail(
   generatedWorkOrder: MaintenanceGeneratedWorkOrder,
   task: MaintenanceTask,
@@ -4025,6 +4548,10 @@ function recommendedTeamForPoint(point: IotMonitoringPoint) {
 
   if (point.category === 'StrongElectric') {
     return '电工班工作人员'
+  }
+
+  if (point.category === 'Hvac') {
+    return '暖通班工作人员'
   }
 
   return '综合维修班'

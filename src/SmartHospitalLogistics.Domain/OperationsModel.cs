@@ -645,6 +645,54 @@ public sealed record PowerDistributionCircuitDetail(
     IReadOnlyList<MaintenanceTask> MaintenanceTasks,
     IReadOnlyList<FeatureEvidence> SourceEvidence);
 
+public enum HvacLoopStatus
+{
+    Normal,
+    Warning,
+    Critical,
+    Maintenance
+}
+
+public sealed record HvacLoop(
+    string LoopCode,
+    string Name,
+    string System,
+    SpatialLocation Location,
+    string ResponsibleTeam,
+    string MonitoringPointCode,
+    string AssetCode,
+    HvacLoopStatus Status,
+    IReadOnlyList<string> MonitoredMetrics,
+    string RiskSummary,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
+
+public sealed record HvacBoardKpi(
+    int LoopCount,
+    int AbnormalLoops,
+    int ActiveAlarms,
+    int OpenWorkOrders,
+    int DueMaintenanceTasks);
+
+public sealed record HvacBoard(
+    DateTimeOffset GeneratedAt,
+    IReadOnlyList<HvacLoop> Loops,
+    IReadOnlyList<IotMonitoringPoint> MonitoringPoints,
+    IReadOnlyList<AssetLedgerItem> HvacAssets,
+    IReadOnlyList<MonitoringAlarmEvent> ActiveAlarms,
+    IReadOnlyList<WorkOrder> OpenWorkOrders,
+    IReadOnlyList<MaintenanceTask> DueMaintenanceTasks,
+    IReadOnlyList<FeatureEvidence> SourceEvidence,
+    HvacBoardKpi Kpis);
+
+public sealed record HvacLoopDetail(
+    HvacLoop Loop,
+    IotPointDetail? MonitoringPoint,
+    AssetMaintenanceDetail? HvacAsset,
+    IReadOnlyList<MonitoringAlarmEvent> ActiveAlarms,
+    IReadOnlyList<WorkOrder> OpenWorkOrders,
+    IReadOnlyList<MaintenanceTask> MaintenanceTasks,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
+
 public sealed record FeatureEvidence(
     string FeatureName,
     IReadOnlyList<string> Sources,

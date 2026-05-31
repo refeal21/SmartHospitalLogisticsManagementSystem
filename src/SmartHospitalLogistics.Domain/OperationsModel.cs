@@ -693,6 +693,54 @@ public sealed record HvacLoopDetail(
     IReadOnlyList<MaintenanceTask> MaintenanceTasks,
     IReadOnlyList<FeatureEvidence> SourceEvidence);
 
+public enum WaterOperationsUnitStatus
+{
+    Normal,
+    Warning,
+    Critical,
+    Maintenance
+}
+
+public sealed record WaterOperationsUnit(
+    string UnitCode,
+    string Name,
+    string System,
+    SpatialLocation Location,
+    string ResponsibleTeam,
+    string MonitoringPointCode,
+    string AssetCode,
+    WaterOperationsUnitStatus Status,
+    IReadOnlyList<string> MonitoredMetrics,
+    string RiskSummary,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
+
+public sealed record WaterOperationsBoardKpi(
+    int UnitCount,
+    int AbnormalUnits,
+    int ActiveAlarms,
+    int OpenWorkOrders,
+    int DueMaintenanceTasks);
+
+public sealed record WaterOperationsBoard(
+    DateTimeOffset GeneratedAt,
+    IReadOnlyList<WaterOperationsUnit> Units,
+    IReadOnlyList<IotMonitoringPoint> MonitoringPoints,
+    IReadOnlyList<AssetLedgerItem> WaterAssets,
+    IReadOnlyList<MonitoringAlarmEvent> ActiveAlarms,
+    IReadOnlyList<WorkOrder> OpenWorkOrders,
+    IReadOnlyList<MaintenanceTask> DueMaintenanceTasks,
+    IReadOnlyList<FeatureEvidence> SourceEvidence,
+    WaterOperationsBoardKpi Kpis);
+
+public sealed record WaterOperationsUnitDetail(
+    WaterOperationsUnit Unit,
+    IotPointDetail? MonitoringPoint,
+    AssetMaintenanceDetail? WaterAsset,
+    IReadOnlyList<MonitoringAlarmEvent> ActiveAlarms,
+    IReadOnlyList<WorkOrder> OpenWorkOrders,
+    IReadOnlyList<MaintenanceTask> MaintenanceTasks,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
+
 public sealed record FeatureEvidence(
     string FeatureName,
     IReadOnlyList<string> Sources,

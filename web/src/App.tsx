@@ -557,6 +557,52 @@ type HvacLoopDetail = {
   sourceEvidence: FeatureEvidence[]
 }
 
+type WaterOperationsUnitStatus = 'Normal' | 'Warning' | 'Critical' | 'Maintenance'
+
+type WaterOperationsUnit = {
+  unitCode: string
+  name: string
+  system: string
+  location: SpatialLocation
+  responsibleTeam: string
+  monitoringPointCode: string
+  assetCode: string
+  status: WaterOperationsUnitStatus
+  monitoredMetrics: string[]
+  riskSummary: string
+  sourceEvidence: FeatureEvidence[]
+}
+
+type WaterOperationsBoardKpi = {
+  unitCount: number
+  abnormalUnits: number
+  activeAlarms: number
+  openWorkOrders: number
+  dueMaintenanceTasks: number
+}
+
+type WaterOperationsBoard = {
+  generatedAt: string
+  units: WaterOperationsUnit[]
+  monitoringPoints: IotMonitoringPoint[]
+  waterAssets: AssetLedgerItem[]
+  activeAlarms: MonitoringAlarmEvent[]
+  openWorkOrders: WorkOrder[]
+  dueMaintenanceTasks: MaintenanceTask[]
+  sourceEvidence: FeatureEvidence[]
+  kpis: WaterOperationsBoardKpi
+}
+
+type WaterOperationsUnitDetail = {
+  unit: WaterOperationsUnit
+  monitoringPoint?: IotPointDetail | null
+  waterAsset?: AssetMaintenanceDetail | null
+  activeAlarms: MonitoringAlarmEvent[]
+  openWorkOrders: WorkOrder[]
+  maintenanceTasks: MaintenanceTask[]
+  sourceEvidence: FeatureEvidence[]
+}
+
 type SpatialPointKind = 'workOrder' | 'asset' | 'alarm' | 'iot'
 type SpatialPointTone = 'workorder' | 'asset' | 'alert' | 'normal'
 
@@ -592,6 +638,7 @@ type WorkspacePage =
   | 'medicalGas'
   | 'powerDistribution'
   | 'hvac'
+  | 'waterOperations'
   | 'spatial'
   | 'evidence'
 
@@ -630,6 +677,20 @@ const locations = {
     floor: 'B1',
     room: '变配电室',
     bimElementId: 'BIM-ENE-B1-PDU',
+  },
+  pump: {
+    campus: '同仁亦庄院区',
+    building: '能源中心',
+    floor: 'B1',
+    room: '给水泵房',
+    bimElementId: 'BIM-ENE-B1-PUMP',
+  },
+  sewage: {
+    campus: '同仁亦庄院区',
+    building: '后勤楼',
+    floor: 'B1',
+    room: '污水处理站',
+    bimElementId: 'BIM-LOG-B1-SEWAGE',
   },
 }
 
@@ -1031,6 +1092,8 @@ const localIotCatalog: IotIntegrationCatalog = {
   systems: [
     { category: 'StrongElectric', name: '强电系统', subsystems: ['变配电', '远传电表', '照明'], roles: ['电工班工作人员'], endpoints: ['控制室电脑端', '移动端'] },
     { category: 'Hvac', name: '供暖空调系统', subsystems: ['冷热源', '空调水', '新风机组'], roles: ['暖通班工作人员'], endpoints: ['控制室电脑端', '移动端'] },
+    { category: 'WaterSupplyDrainage', name: '给排水系统', subsystems: ['给水', '热水', '中水', '排水'], roles: ['给排水班工作人员'], endpoints: ['控制室电脑端', '移动端'] },
+    { category: 'Sewage', name: '污水站监测', subsystems: ['医疗废水', '污水处理站', '水质监测'], roles: ['给排水班工作人员'], endpoints: ['控制室电脑端', '移动端'] },
     { category: 'MedicalGas', name: '医用气体系统', subsystems: ['氧气', '压缩空气', '负压真空'], roles: ['医气维保人员'], endpoints: ['控制室电脑端', '移动端'] },
     { category: 'EnvironmentQuality', name: '环境质量系统', subsystems: ['CO2', '温湿度'], roles: ['环境监管班组'], endpoints: ['控制室电脑端', '移动端'] },
   ],
@@ -1077,6 +1140,35 @@ const localIotCatalog: IotIntegrationCatalog = {
       ],
       sourceEvidence: iotSourceEvidence,
     },
+    {
+      pointCode: 'WATER-PUMP-B1-01',
+      name: 'B1 给水泵房压力点',
+      category: 'WaterSupplyDrainage',
+      location: locations.pump,
+      deviceCode: 'WATER-PUMP-001',
+      protocolAdapter: 'modbus-adapter',
+      metrics: [
+        { code: 'pressure', name: '压力', unit: 'MPa', dataType: 'decimal', sourceField: '压力' },
+        { code: 'flow', name: '流量', unit: 'm3/h', dataType: 'decimal', sourceField: '流量' },
+        { code: 'level', name: '液位', unit: 'm', dataType: 'decimal', sourceField: '液位' },
+        { code: 'water_quality', name: '水质', unit: 'index', dataType: 'decimal', sourceField: '水质' },
+      ],
+      sourceEvidence: iotSourceEvidence,
+    },
+    {
+      pointCode: 'SEWAGE-STATION-01',
+      name: '污水处理站综合水质点',
+      category: 'Sewage',
+      location: locations.sewage,
+      deviceCode: 'SEWAGE-001',
+      protocolAdapter: 'opcua-adapter',
+      metrics: [
+        { code: 'ph', name: 'PH', unit: '', dataType: 'decimal', sourceField: '水质' },
+        { code: 'cod', name: 'COD', unit: 'mg/L', dataType: 'decimal', sourceField: '医疗废水指标' },
+        { code: 'flow', name: '流量', unit: 'm3/h', dataType: 'decimal', sourceField: '流量' },
+      ],
+      sourceEvidence: iotSourceEvidence,
+    },
   ],
   thresholdRules: [
     {
@@ -1098,6 +1190,22 @@ const localIotCatalog: IotIntegrationCatalog = {
       criticalMin: 0.18,
       criticalMax: 0.75,
       ruleSummary: '冷冻泵压力需保持稳定',
+    },
+    {
+      pointCode: 'WATER-PUMP-B1-01',
+      metricCode: 'pressure',
+      direction: 'Below',
+      warningMin: 0.32,
+      criticalMin: 0.26,
+      ruleSummary: '给水压力低于阈值影响供水安全',
+    },
+    {
+      pointCode: 'SEWAGE-STATION-01',
+      metricCode: 'cod',
+      direction: 'Above',
+      warningMax: 150,
+      criticalMax: 220,
+      ruleSummary: '医疗废水 COD 超阈值需污水站处置',
     },
     {
       pointCode: 'MEDGAS-O2-8F',
@@ -1341,6 +1449,126 @@ const localHvacBoard: HvacBoard = {
   },
 }
 
+const waterOperationsSourceEvidence: FeatureEvidence[] = [
+  {
+    featureName: '给排水/污水站专项运行',
+    sources: ['北建院', '中科医信', 'PPT'],
+    evidenceSummary: '北建院客户数据定义给排水系统、污水站监测、点位、安装位置、采集字段、角色和使用端；中科医信竞品包含给排水、污水站、巡检保养和工单颗粒度；PPT 定义 BIM 智慧运维集成边界。',
+  },
+  {
+    featureName: '水务告警巡检工单闭环',
+    sources: ['北建院', '中科医信', 'PPT'],
+    evidenceSummary: '给水压力、流量、液位、水质、污水 COD 和 PH 必须能进入预警池，并与给水泵、污水站资产、巡检任务和工单调度贯通。',
+  },
+]
+
+const localWaterPumpAsset: AssetLedgerItem = {
+  assetCode: 'WATER-PUMP-B1-01',
+  name: 'B1 给水泵房稳压泵组',
+  system: '给排水',
+  criticality: 'High',
+  location: locations.pump,
+  status: 'Warning',
+  ownerTeam: '给排水班工作人员',
+  manufacturer: 'Mock厂商',
+  model: 'WATER-PUMP-001',
+  commissionedOn: '2021-09-16',
+  maintenanceStrategy: '日巡检 + 压力低限告警转工单',
+  healthScore: 79,
+  currentRisk: '给水压力低于阈值会影响门急诊和住院供水安全',
+  sourceTags: ['北建院', '中科医信', 'PPT'],
+}
+
+const localSewageAsset: AssetLedgerItem = {
+  assetCode: 'SEWAGE-STATION-01',
+  name: 'B1 污水处理站综合水质设备',
+  system: '污水站',
+  criticality: 'LifeSafety',
+  location: locations.sewage,
+  status: 'Warning',
+  ownerTeam: '给排水班工作人员',
+  manufacturer: 'Mock厂商',
+  model: 'SEWAGE-001',
+  commissionedOn: '2020-12-08',
+  maintenanceStrategy: '日巡检 + COD/PH 超限告警转工单',
+  healthScore: 72,
+  currentRisk: '医疗废水 COD 或 PH 超限必须及时处置并留痕',
+  sourceTags: ['北建院', '中科医信', 'PPT'],
+}
+
+const localWaterPumpTask: MaintenanceTask = {
+  taskNo: 'MT-20260530-0006',
+  planCode: 'MP-WATER-PUMP',
+  assetCode: 'WATER-PUMP-B1-01',
+  title: 'B1 给水泵房稳压供水巡检',
+  taskType: 'SafetyCheck',
+  status: 'Due',
+  priority: 'High',
+  scheduledAt: '2026-05-30T09:22:00+08:00',
+  dueAt: '2026-05-30T10:40:00+08:00',
+  responsibleTeam: '给排水班工作人员',
+  checklistResults: [],
+}
+
+const localSewageTask: MaintenanceTask = {
+  taskNo: 'MT-20260530-0007',
+  planCode: 'MP-SEWAGE-STATION',
+  assetCode: 'SEWAGE-STATION-01',
+  title: '污水处理站水质与设备巡检',
+  taskType: 'SafetyCheck',
+  status: 'Due',
+  priority: 'Critical',
+  scheduledAt: '2026-05-30T09:12:00+08:00',
+  dueAt: '2026-05-30T10:20:00+08:00',
+  responsibleTeam: '给排水班工作人员',
+  checklistResults: [],
+}
+
+const localWaterOperationsBoard: WaterOperationsBoard = {
+  generatedAt: '2026-05-30T09:30:00+08:00',
+  units: [
+    {
+      unitCode: 'WATER-SYS-B1-PUMP',
+      name: 'B1 给水泵房稳压供水单元',
+      system: '给排水',
+      location: locations.pump,
+      responsibleTeam: '给排水班工作人员',
+      monitoringPointCode: 'WATER-PUMP-B1-01',
+      assetCode: 'WATER-PUMP-B1-01',
+      status: 'Warning',
+      monitoredMetrics: ['pressure', 'flow', 'level', 'water_quality'],
+      riskSummary: '给水压力、流量、液位和水质需要按阈值预警，并联动给水泵巡检与一站式工单调度。',
+      sourceEvidence: waterOperationsSourceEvidence,
+    },
+    {
+      unitCode: 'SEWAGE-SYS-B1-TREATMENT',
+      name: 'B1 污水处理站水质监管单元',
+      system: '污水站',
+      location: locations.sewage,
+      responsibleTeam: '给排水班工作人员',
+      monitoringPointCode: 'SEWAGE-STATION-01',
+      assetCode: 'SEWAGE-STATION-01',
+      status: 'Warning',
+      monitoredMetrics: ['ph', 'cod', 'flow'],
+      riskSummary: '医疗废水 COD、PH 和流量必须进入水质预警池，并联动污水站巡检、第三方处置和工单调度。',
+      sourceEvidence: waterOperationsSourceEvidence,
+    },
+  ],
+  monitoringPoints: localIotCatalog.points.filter((point) => ['WATER-PUMP-B1-01', 'SEWAGE-STATION-01'].includes(point.pointCode)),
+  waterAssets: [localWaterPumpAsset, localSewageAsset],
+  activeAlarms: [],
+  openWorkOrders: [],
+  dueMaintenanceTasks: [localWaterPumpTask, localSewageTask],
+  sourceEvidence: waterOperationsSourceEvidence,
+  kpis: {
+    unitCount: 2,
+    abnormalUnits: 2,
+    activeAlarms: 0,
+    openWorkOrders: 0,
+    dueMaintenanceTasks: 2,
+  },
+}
+
 const statusLabels: Record<WorkOrderStatus | FacilityStatus | SignalStatus, string> = {
   New: '新建',
   Dispatched: '已派工',
@@ -1431,6 +1659,13 @@ const hvacStatusLabels: Record<HvacLoopStatus, string> = {
   Maintenance: '保养中',
 }
 
+const waterOperationsStatusLabels: Record<WaterOperationsUnitStatus, string> = {
+  Normal: '正常',
+  Warning: '预警',
+  Critical: '严重',
+  Maintenance: '保养中',
+}
+
 const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = {
   overview: {
     title: '后勤运营总览',
@@ -1464,6 +1699,10 @@ const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = 
     title: '暖通/冷热站专项工作台',
     summary: '聚合冷站冷冻水回路、BAS 点位、冷冻泵资产、巡检任务、压力告警和工单调度，让冷热源运行形成闭环。',
   },
+  waterOperations: {
+    title: '给排水/污水站专项工作台',
+    summary: '聚合给水泵房、污水处理站、压力水质点位、资产巡检、告警和工单调度，让水务运行形成闭环。',
+  },
   spatial: {
     title: 'BIM 空间运维工作台',
     summary: '聚焦空间定位：设备、告警、工单和班组负载在同一空间语境里联动。',
@@ -1482,6 +1721,17 @@ const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5248'
 
 function pageFromMenuItem(item: string): WorkspacePage {
   const normalized = item.toLowerCase()
+  if (
+    normalized.includes('water-operations') ||
+    normalized.includes('water') ||
+    normalized.includes('sewage') ||
+    item.includes('给排水') ||
+    item.includes('给水') ||
+    item.includes('污水')
+  ) {
+    return 'waterOperations'
+  }
+
   if (
     normalized.includes('hvac') ||
     normalized.includes('chw') ||
@@ -1603,6 +1853,11 @@ function App() {
   const [hvacBoard, setHvacBoard] = useState(localHvacBoard)
   const [hvacLoopDetail, setHvacLoopDetail] = useState(() => buildLocalHvacDetail('HVAC-LOOP-B1-CHW'))
   const [convertedHvacDetail, setConvertedHvacDetail] = useState<WorkOrderDetail | null>(null)
+  const [waterOperationsBoard, setWaterOperationsBoard] = useState(localWaterOperationsBoard)
+  const [waterOperationsUnitDetail, setWaterOperationsUnitDetail] = useState(() =>
+    buildLocalWaterOperationsDetail('WATER-SYS-B1-PUMP'),
+  )
+  const [convertedWaterOperationsDetail, setConvertedWaterOperationsDetail] = useState<WorkOrderDetail | null>(null)
   const [iotCatalog, setIotCatalog] = useState(localIotCatalog)
   const [selectedIotPoint, setSelectedIotPoint] = useState(() => buildLocalIotPointDetail('MEDGAS-O2-8F'))
   const [lastTelemetryResult, setLastTelemetryResult] = useState<TelemetryIngestionResult | null>(null)
@@ -1645,6 +1900,7 @@ function App() {
       fetch(`${apiBase}/api/operations/medical-gas-board`, { signal: controller.signal }),
       fetch(`${apiBase}/api/operations/power-distribution-board`, { signal: controller.signal }),
       fetch(`${apiBase}/api/operations/hvac-board`, { signal: controller.signal }),
+      fetch(`${apiBase}/api/operations/water-operations-board`, { signal: controller.signal }),
     ])
       .then(async ([
         dashboardResponse,
@@ -1656,6 +1912,7 @@ function App() {
         medicalGasBoardResponse,
         powerDistributionBoardResponse,
         hvacBoardResponse,
+        waterOperationsBoardResponse,
       ]) => {
         if (
           !dashboardResponse.ok ||
@@ -1666,7 +1923,8 @@ function App() {
           !alarmBoardResponse.ok ||
           !medicalGasBoardResponse.ok ||
           !powerDistributionBoardResponse.ok ||
-          !hvacBoardResponse.ok
+          !hvacBoardResponse.ok ||
+          !waterOperationsBoardResponse.ok
         ) {
           throw new Error('Logistics API unavailable')
         }
@@ -1678,6 +1936,7 @@ function App() {
         const fetchedMedicalGasBoard = (await medicalGasBoardResponse.json()) as MedicalGasBoard
         const fetchedPowerDistributionBoard = (await powerDistributionBoardResponse.json()) as PowerDistributionBoard
         const fetchedHvacBoard = (await hvacBoardResponse.json()) as HvacBoard
+        const fetchedWaterOperationsBoard = (await waterOperationsBoardResponse.json()) as WaterOperationsBoard
         setDashboard((await dashboardResponse.json()) as OperationsDashboard)
         setBlueprint((await blueprintResponse.json()) as LogisticsBlueprint)
         setDispatchBoard(board)
@@ -1687,6 +1946,7 @@ function App() {
         setMedicalGasBoard(fetchedMedicalGasBoard)
         setPowerDistributionBoard(fetchedPowerDistributionBoard)
         setHvacBoard(fetchedHvacBoard)
+        setWaterOperationsBoard(fetchedWaterOperationsBoard)
         setSelectedAlarm(fetchedAlarmBoard.alarms[0] ?? null)
         setSource('api')
 
@@ -1750,6 +2010,16 @@ function App() {
           })
           if (loopResponse.ok) {
             setHvacLoopDetail((await loopResponse.json()) as HvacLoopDetail)
+          }
+        }
+
+        const firstWaterUnitCode = fetchedWaterOperationsBoard.units[0]?.unitCode
+        if (firstWaterUnitCode) {
+          const unitResponse = await fetch(`${apiBase}/api/operations/water-operations-units/${firstWaterUnitCode}`, {
+            signal: controller.signal,
+          })
+          if (unitResponse.ok) {
+            setWaterOperationsUnitDetail((await unitResponse.json()) as WaterOperationsUnitDetail)
           }
         }
       })
@@ -2439,6 +2709,188 @@ function App() {
         ? convertedHvacDetail
         : source === 'api'
           ? await loadWorkOrderDetailForAlarm(workOrderNo, hvacLoopDetail.activeAlarms[0])
+          : null
+
+    if (detail) {
+      setSelectedDetail(detail)
+    }
+    openServiceWorkflowTab(serviceWorkflowTabs[1])
+  }
+
+  async function loadWaterOperationsUnitDetail(unitCode: string, forceApi = false) {
+    if (source === 'api' || forceApi) {
+      const response = await fetch(`${apiBase}/api/operations/water-operations-units/${unitCode}`)
+      if (response.ok) {
+        setWaterOperationsUnitDetail((await response.json()) as WaterOperationsUnitDetail)
+        return
+      }
+    }
+
+    setWaterOperationsUnitDetail(buildLocalWaterOperationsDetail(unitCode))
+  }
+
+  async function refreshWaterOperationsBoard(unitCode = waterOperationsUnitDetail.unit.unitCode) {
+    if (source !== 'api') {
+      return
+    }
+
+    const boardResponse = await fetch(`${apiBase}/api/operations/water-operations-board`)
+    if (boardResponse.ok) {
+      setWaterOperationsBoard((await boardResponse.json()) as WaterOperationsBoard)
+    }
+
+    const detailResponse = await fetch(`${apiBase}/api/operations/water-operations-units/${unitCode}`)
+    if (detailResponse.ok) {
+      setWaterOperationsUnitDetail((await detailResponse.json()) as WaterOperationsUnitDetail)
+    }
+  }
+
+  function applyWaterOperationsAlarm(alarm: MonitoringAlarmEvent) {
+    setWaterOperationsBoard((current) => {
+      const alarms = [alarm, ...current.activeAlarms.filter((item) => item.alarmNo !== alarm.alarmNo)]
+      return {
+        ...current,
+        activeAlarms: alarms,
+        units: current.units.map((unit) =>
+          unit.monitoringPointCode === alarm.pointCode ? { ...unit, status: 'Critical' } : unit,
+        ),
+        kpis: {
+          ...current.kpis,
+          activeAlarms: alarms.length,
+          abnormalUnits: current.kpis.abnormalUnits || 1,
+        },
+      }
+    })
+    setWaterOperationsUnitDetail((current) => ({
+      ...current,
+      unit: { ...current.unit, status: 'Critical' },
+      activeAlarms: [alarm, ...current.activeAlarms.filter((item) => item.alarmNo !== alarm.alarmNo)],
+    }))
+  }
+
+  function applyWaterOperationsWorkOrderDetail(detail: WorkOrderDetail) {
+    setConvertedWaterOperationsDetail(detail)
+    setWaterOperationsBoard((current) => {
+      const orders = [detail.workOrder, ...current.openWorkOrders.filter((item) => item.workOrderNo !== detail.workOrder.workOrderNo)]
+      return {
+        ...current,
+        openWorkOrders: orders,
+        kpis: {
+          ...current.kpis,
+          openWorkOrders: orders.length,
+        },
+      }
+    })
+    setWaterOperationsUnitDetail((current) => ({
+      ...current,
+      openWorkOrders: [
+        detail.workOrder,
+        ...current.openWorkOrders.filter((item) => item.workOrderNo !== detail.workOrder.workOrderNo),
+      ],
+    }))
+  }
+
+  async function ingestWaterOperationsCriticalTelemetry() {
+    const point =
+      iotCatalog.points.find((item) => item.pointCode === waterOperationsUnitDetail.unit.monitoringPointCode) ??
+      localIotCatalog.points.find((item) => item.pointCode === 'WATER-PUMP-B1-01')!
+    const metricCode =
+      point.pointCode === 'SEWAGE-STATION-01'
+        ? point.metrics.find((metric) => metric.code === 'cod')?.code ?? 'cod'
+        : point.metrics.find((metric) => metric.code === 'pressure')?.code ?? 'pressure'
+    const unit = point.metrics.find((metric) => metric.code === metricCode)?.unit ?? (metricCode === 'cod' ? 'mg/L' : 'MPa')
+    const value = point.pointCode === 'SEWAGE-STATION-01' ? 260 : 0.2
+
+    if (source === 'api') {
+      const response = await fetch(`${apiBase}/api/operations/iot-readings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pointCode: point.pointCode,
+          metricCode,
+          value,
+          unit,
+          collectedAt: new Date().toISOString(),
+        }),
+      })
+      if (response.ok) {
+        const result = (await response.json()) as TelemetryIngestionResult
+        applyTelemetryResult(result)
+        await refreshMonitoringAlarms({ pointCode: result.pointCode, metricCode: result.metricCode })
+        await refreshWaterOperationsBoard()
+        return
+      }
+    }
+
+    const result = buildLocalTelemetryResult(point, metricCode, value, unit)
+    applyTelemetryResult(result)
+    if (result.reading) {
+      const alarm = buildLocalAlarmFromTelemetry(point, result.reading)
+      applyAlarmUpdate(alarm)
+      applyWaterOperationsAlarm(alarm)
+    }
+  }
+
+  async function convertWaterOperationsAlarmToWorkOrder() {
+    const alarm = waterOperationsUnitDetail.activeAlarms[0] ?? waterOperationsBoard.activeAlarms[0]
+    if (!alarm) {
+      return
+    }
+
+    if (source === 'api' && alarm.status !== 'ConvertedToWorkOrder') {
+      const response = await fetch(`${apiBase}/api/operations/monitoring-alarms/${alarm.alarmNo}/convert-to-work-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operator: '水务专项调度员',
+          targetTeam: waterOperationsUnitDetail.unit.responsibleTeam,
+          remark: '给排水/污水站告警转入一站式工单调度',
+        }),
+      })
+      if (response.ok) {
+        const convertedAlarm = (await response.json()) as MonitoringAlarmEvent
+        applyAlarmUpdate(convertedAlarm)
+        const detail = convertedAlarm.workOrderNo
+          ? await loadWorkOrderDetailForAlarm(convertedAlarm.workOrderNo, convertedAlarm)
+          : null
+        if (detail) {
+          applyGeneratedWorkOrderDetail(detail, { openDispatch: false })
+          applyWaterOperationsWorkOrderDetail(detail)
+        }
+        await refreshWaterOperationsBoard()
+        return
+      }
+    }
+
+    const convertedAlarm: MonitoringAlarmEvent = {
+      ...alarm,
+      status: 'ConvertedToWorkOrder',
+      workOrderNo: alarm.workOrderNo ?? buildAlarmWorkOrderNo(alarm),
+      acknowledgedBy: alarm.acknowledgedBy ?? waterOperationsUnitDetail.unit.responsibleTeam,
+      acknowledgedAt: alarm.acknowledgedAt ?? new Date().toISOString(),
+      lastRemark: '给排水/污水站告警转入一站式工单调度',
+    }
+    const detail = buildLocalAlarmWorkOrderDetail(convertedAlarm)
+    applyAlarmUpdate(convertedAlarm)
+    applyGeneratedWorkOrderDetail(detail, { openDispatch: false })
+    applyWaterOperationsAlarm(convertedAlarm)
+    applyWaterOperationsWorkOrderDetail(detail)
+  }
+
+  async function openConvertedWaterOperationsWorkOrder() {
+    const workOrderNo =
+      convertedWaterOperationsDetail?.workOrder.workOrderNo ??
+      waterOperationsUnitDetail.openWorkOrders[0]?.workOrderNo ??
+      waterOperationsBoard.openWorkOrders[0]?.workOrderNo
+    if (!workOrderNo) {
+      return
+    }
+
+    const detail =
+      convertedWaterOperationsDetail?.workOrder.workOrderNo === workOrderNo
+        ? convertedWaterOperationsDetail
+        : source === 'api'
+          ? await loadWorkOrderDetailForAlarm(workOrderNo, waterOperationsUnitDetail.activeAlarms[0])
           : null
 
     if (detail) {
@@ -3843,6 +4295,131 @@ function App() {
             </div>
           </section>
 
+          <section className="panel water-operations-panel">
+            <PanelHeader title="给排水/污水站专项" meta="给水 / 污水 / 点位 / 资产 / 巡检 / 告警 / 工单" />
+            <div className="medical-gas-workbench" data-testid="water-operations-board">
+              <section className="medical-gas-summary">
+                <h2>专项总览</h2>
+                <div className="medical-gas-kpis">
+                  <article>
+                    <span>单元</span>
+                    <strong>{waterOperationsBoard.kpis.unitCount}</strong>
+                  </article>
+                  <article>
+                    <span>异常单元</span>
+                    <strong>{waterOperationsBoard.kpis.abnormalUnits}</strong>
+                  </article>
+                  <article>
+                    <span>活动告警</span>
+                    <strong>{waterOperationsBoard.kpis.activeAlarms}</strong>
+                  </article>
+                  <article>
+                    <span>待办巡检</span>
+                    <strong>{waterOperationsBoard.kpis.dueMaintenanceTasks}</strong>
+                  </article>
+                </div>
+                {waterOperationsBoard.units.map((unit) => (
+                  <button
+                    className={`medical-gas-zone-card ${waterOperationsUnitDetail.unit.unitCode === unit.unitCode ? 'selected' : ''}`}
+                    key={unit.unitCode}
+                    type="button"
+                    onClick={() => void loadWaterOperationsUnitDetail(unit.unitCode)}
+                  >
+                    <strong>{unit.name}</strong>
+                    <span>{unit.unitCode} / {unit.monitoringPointCode} / {waterOperationsStatusLabels[unit.status]}</span>
+                    <small>{unit.location.building} / {unit.location.room} / {unit.location.bimElementId}</small>
+                  </button>
+                ))}
+              </section>
+
+              <section className="medical-gas-zone-detail">
+                <h2>单元详情</h2>
+                <div className="detail-title">
+                  <strong>{waterOperationsUnitDetail.unit.name}</strong>
+                  <span>{waterOperationsStatusLabels[waterOperationsUnitDetail.unit.status]}</span>
+                </div>
+                <dl className="detail-list">
+                  <div>
+                    <dt>BIM</dt>
+                    <dd>{waterOperationsUnitDetail.unit.location.bimElementId}</dd>
+                  </div>
+                  <div>
+                    <dt>点位</dt>
+                    <dd>{waterOperationsUnitDetail.unit.monitoringPointCode}</dd>
+                  </div>
+                  <div>
+                    <dt>责任</dt>
+                    <dd>{waterOperationsUnitDetail.unit.responsibleTeam}</dd>
+                  </div>
+                  <div>
+                    <dt>来源</dt>
+                    <dd>{waterOperationsUnitDetail.sourceEvidence.flatMap((item) => item.sources).join('、')}</dd>
+                  </div>
+                </dl>
+                <p>{waterOperationsUnitDetail.unit.riskSummary}</p>
+              </section>
+
+              <section className="medical-gas-linked">
+                <h2>点位与资产</h2>
+                <article>
+                  <strong>{waterOperationsUnitDetail.monitoringPoint?.point.pointCode ?? waterOperationsUnitDetail.unit.monitoringPointCode}</strong>
+                  <span>{waterOperationsUnitDetail.monitoringPoint?.point.name ?? '水务运行点位'}</span>
+                  <small>{waterOperationsUnitDetail.monitoringPoint?.point.metrics.map((metric) => `${metric.name}/${metric.sourceField}`).join('、')}</small>
+                </article>
+                <article>
+                  <strong>{waterOperationsUnitDetail.waterAsset?.asset.assetCode ?? waterOperationsUnitDetail.unit.assetCode}</strong>
+                  <span>{waterOperationsUnitDetail.waterAsset?.asset.name ?? '水务设备资产'}</span>
+                  <small>{waterOperationsUnitDetail.waterAsset?.asset.maintenanceStrategy ?? '日巡检 + 阈值告警转工单'}</small>
+                </article>
+                {waterOperationsUnitDetail.maintenanceTasks.map((task) => (
+                  <article key={task.taskNo}>
+                    <strong>{task.taskNo}</strong>
+                    <span>{task.title}</span>
+                    <small>{maintenanceStatusLabels[task.status]} / {priorityLabels[task.priority]}</small>
+                  </article>
+                ))}
+              </section>
+
+              <section className="medical-gas-actions">
+                <h2>告警与工单</h2>
+                <div className="action-bar">
+                  <button data-testid="water-operations-ingest-critical" type="button" onClick={() => void ingestWaterOperationsCriticalTelemetry()}>
+                    模拟水务异常
+                  </button>
+                  <button data-testid="water-operations-convert-workorder" type="button" onClick={() => void convertWaterOperationsAlarmToWorkOrder()}>
+                    告警转工单
+                  </button>
+                  <button data-testid="water-operations-open-dispatch" type="button" onClick={() => void openConvertedWaterOperationsWorkOrder()}>
+                    进入调度池
+                  </button>
+                </div>
+                <div className="medical-gas-flow-list">
+                  {waterOperationsUnitDetail.activeAlarms.map((alarm) => (
+                    <article key={alarm.alarmNo}>
+                      <strong>{alarm.alarmNo}</strong>
+                      <span>{alarm.pointCode} / {telemetryRiskLabels[alarm.riskLevel]} / {alarmStatusLabels[alarm.status]}</span>
+                      <small>{alarm.workOrderNo ?? '尚未转工单'}</small>
+                    </article>
+                  ))}
+                  {waterOperationsUnitDetail.openWorkOrders.map((order) => (
+                    <article key={order.workOrderNo}>
+                      <strong>{order.workOrderNo}</strong>
+                      <span>{order.title}</span>
+                      <small>{order.location.bimElementId}</small>
+                    </article>
+                  ))}
+                  {convertedWaterOperationsDetail ? (
+                    <article>
+                      <strong>{convertedWaterOperationsDetail.workOrder.workOrderNo}</strong>
+                      <span>{convertedWaterOperationsDetail.sourceEvidence.map((item) => item.featureName).join('、')}</span>
+                      <small>{convertedWaterOperationsDetail.location.bimElementId}</small>
+                    </article>
+                  ) : null}
+                </div>
+              </section>
+            </div>
+          </section>
+
           <section className="panel spatial-panel">
             <PanelHeader title="BIM 空间业务定位" meta="设备 / 告警 / 工单同图层" />
             {activePage === 'spatial' ? (
@@ -4351,6 +4928,62 @@ function buildLocalHvacDetail(loopCode: string): HvacLoopDetail {
   }
 }
 
+function buildLocalWaterOperationsDetail(unitCode: string): WaterOperationsUnitDetail {
+  const unit =
+    localWaterOperationsBoard.units.find((item) => item.unitCode === unitCode) ??
+    localWaterOperationsBoard.units[0]
+  const waterAsset =
+    localWaterOperationsBoard.waterAssets.find((asset) => asset.assetCode === unit.assetCode) ??
+    localWaterOperationsBoard.waterAssets[0]
+  const isSewage = unit.assetCode === 'SEWAGE-STATION-01'
+
+  return {
+    unit,
+    monitoringPoint: buildLocalIotPointDetail(unit.monitoringPointCode),
+    waterAsset: {
+      asset: waterAsset,
+      plans: [
+        {
+          planCode: isSewage ? 'MP-SEWAGE-STATION' : 'MP-WATER-PUMP',
+          assetCode: unit.assetCode,
+          name: isSewage ? '污水处理站水质与设备巡检' : 'B1 给水泵房稳压供水巡检',
+          taskType: 'SafetyCheck',
+          cycleDays: 1,
+          nextDueAt: isSewage ? '2026-05-30T10:20:00+08:00' : '2026-05-30T10:40:00+08:00',
+          responsibleTeam: unit.responsibleTeam,
+          checklistTemplate: isSewage
+            ? [
+                { code: 'CHK-COD', name: 'COD', standard: 'COD 未超过医疗废水阈值', required: true },
+                { code: 'CHK-PH', name: 'PH', standard: 'PH 位于合规范围', required: true },
+                { code: 'CHK-FLOW', name: '处理流量', standard: '处理流量无异常中断', required: true },
+              ]
+            : [
+                { code: 'CHK-PRESSURE', name: '给水压力', standard: '压力不低于安全阈值', required: true },
+                { code: 'CHK-FLOW', name: '供水流量', standard: '流量无异常突降', required: true },
+                { code: 'CHK-LEVEL', name: '水箱液位', standard: '液位处于安全范围', required: true },
+              ],
+          sourceEvidence: waterOperationsSourceEvidence,
+        },
+      ],
+      tasks: isSewage ? [localSewageTask] : [localWaterPumpTask],
+      lifecycle: [
+        {
+          occurredAt: isSewage ? '2026-05-30T04:30:00+08:00' : '2026-05-30T01:30:00+08:00',
+          assetCode: unit.assetCode,
+          eventType: isSewage ? '水质复核' : '给水巡检',
+          operator: unit.responsibleTeam,
+          summary: isSewage ? '完成污水站 COD 与 PH 复核' : '完成稳压泵组压力与液位核查',
+        },
+      ],
+      sourceEvidence: waterOperationsSourceEvidence,
+    },
+    activeAlarms: localWaterOperationsBoard.activeAlarms.filter((alarm) => alarm.pointCode === unit.monitoringPointCode),
+    openWorkOrders: localWaterOperationsBoard.openWorkOrders.filter((order) => order.location.bimElementId === unit.location.bimElementId),
+    maintenanceTasks: localWaterOperationsBoard.dueMaintenanceTasks.filter((task) => task.assetCode === unit.assetCode),
+    sourceEvidence: waterOperationsSourceEvidence,
+  }
+}
+
 function buildMaintenanceWorkOrderDetail(
   generatedWorkOrder: MaintenanceGeneratedWorkOrder,
   task: MaintenanceTask,
@@ -4552,6 +5185,10 @@ function recommendedTeamForPoint(point: IotMonitoringPoint) {
 
   if (point.category === 'Hvac') {
     return '暖通班工作人员'
+  }
+
+  if (point.category === 'WaterSupplyDrainage' || point.category === 'Sewage') {
+    return '给排水班工作人员'
   }
 
   return '综合维修班'

@@ -183,6 +183,15 @@ api.MapGet("/hvac-cooling-loops/{loopCode}", (string loopCode, IHvacService serv
         : Results.NotFound(new { error = $"HVAC cooling loop {loopCode} was not found." }))
     .WithName("GetHvacCoolingLoopDetail");
 
+api.MapGet("/water-operations-board", (IWaterOperationsService service) => service.GetBoard())
+    .WithName("GetWaterOperationsBoard");
+
+api.MapGet("/water-operations-units/{unitCode}", (string unitCode, IWaterOperationsService service) =>
+    service.GetUnitDetail(unitCode) is { } detail
+        ? Results.Ok(detail)
+        : Results.NotFound(new { error = $"Water operations unit {unitCode} was not found." }))
+    .WithName("GetWaterOperationsUnitDetail");
+
 app.Run();
 
 static IResult ToHttpResult(DispatchOperationResult result)

@@ -22,6 +22,7 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
             services.RemoveAll<IMedicalGasPersistence>();
             services.RemoveAll<IPowerDistributionPersistence>();
             services.RemoveAll<IHvacPersistence>();
+            services.RemoveAll<IWaterOperationsPersistence>();
             services.RemoveAll<WorkOrderDispatchService>();
             services.RemoveAll<IWorkOrderDispatchService>();
             services.RemoveAll<IWorkOrderIntakeService>();
@@ -33,6 +34,7 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
             services.RemoveAll<IMedicalGasService>();
             services.RemoveAll<IPowerDistributionService>();
             services.RemoveAll<IHvacService>();
+            services.RemoveAll<IWaterOperationsService>();
 
             services.AddSingleton<IWorkOrderPersistence>(_ =>
                 new SqliteWorkOrderPersistence(Path.Combine(_dbDirectory, "work-orders.db")));
@@ -48,6 +50,8 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
                 new SqlitePowerDistributionPersistence(Path.Combine(_dbDirectory, "power.db")));
             services.AddSingleton<IHvacPersistence>(_ =>
                 new SqliteHvacPersistence(Path.Combine(_dbDirectory, "hvac.db")));
+            services.AddSingleton<IWaterOperationsPersistence>(_ =>
+                new SqliteWaterOperationsPersistence(Path.Combine(_dbDirectory, "water.db")));
 
             services.AddSingleton<WorkOrderDispatchService>();
             services.AddSingleton<IWorkOrderDispatchService>(provider => provider.GetRequiredService<WorkOrderDispatchService>());
@@ -60,6 +64,7 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
             services.AddSingleton<IMedicalGasService, MedicalGasService>();
             services.AddSingleton<IPowerDistributionService, PowerDistributionService>();
             services.AddSingleton<IHvacService, HvacService>();
+            services.AddSingleton<IWaterOperationsService, WaterOperationsService>();
         });
     }
 

@@ -254,6 +254,8 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
         var inpatientWard = new SpatialLocation("同仁亦庄院区", "住院楼", "F8", "眼科病区", "BIM-IPD-F8-WARD");
         var energyRoom = new SpatialLocation("同仁亦庄院区", "能源中心", "B1", "冷站机房", "BIM-ENE-B1-CHILLER");
         var powerRoom = new SpatialLocation("同仁亦庄院区", "能源中心", "B1", "变配电室", "BIM-ENE-B1-PDU");
+        var pumpRoom = new SpatialLocation("同仁亦庄院区", "能源中心", "B1", "给水泵房", "BIM-ENE-B1-PUMP");
+        var sewageRoom = new SpatialLocation("同仁亦庄院区", "后勤楼", "B1", "污水处理站", "BIM-LOG-B1-SEWAGE");
         var wasteRoom = new SpatialLocation("同仁亦庄院区", "后勤楼", "F1", "医废暂存间", "BIM-LOG-F1-WASTE");
 
         return
@@ -317,6 +319,36 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
                 "月度保养 + 能耗趋势复核",
                 91,
                 "运行稳定，维持计划保养",
+                ["北建院", "中科医信", "PPT"]),
+            new AssetLedgerItem(
+                "WATER-PUMP-B1-01",
+                "B1 给水泵房稳压泵组",
+                "给排水",
+                AssetCriticality.High,
+                pumpRoom,
+                FacilityStatus.Warning,
+                "给排水班工作人员",
+                "Mock厂商",
+                "WATER-PUMP-001",
+                "2021-09-16",
+                "日巡检 + 压力低限告警转工单",
+                79,
+                "给水压力低于阈值会影响门急诊和住院供水安全",
+                ["北建院", "中科医信", "PPT"]),
+            new AssetLedgerItem(
+                "SEWAGE-STATION-01",
+                "B1 污水处理站综合水质设备",
+                "污水站",
+                AssetCriticality.LifeSafety,
+                sewageRoom,
+                FacilityStatus.Warning,
+                "给排水班工作人员",
+                "Mock厂商",
+                "SEWAGE-001",
+                "2020-12-08",
+                "日巡检 + COD/PH 超限告警转工单",
+                72,
+                "医疗废水 COD 或 PH 超限必须及时处置并留痕",
                 ["北建院", "中科医信", "PPT"]),
             new AssetLedgerItem(
                 "ELV-OPD-01",
@@ -396,6 +428,34 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
                 ],
                 sourceEvidence),
             new MaintenancePlan(
+                "MP-WATER-PUMP",
+                "WATER-PUMP-B1-01",
+                "B1 给水泵房稳压供水巡检",
+                MaintenanceTaskType.SafetyCheck,
+                1,
+                SeedTime.AddMinutes(70),
+                "给排水班工作人员",
+                [
+                    new InspectionChecklistItem("CHK-PRESSURE", "给水压力", "压力不低于安全阈值", true),
+                    new InspectionChecklistItem("CHK-FLOW", "供水流量", "流量无异常突降", true),
+                    new InspectionChecklistItem("CHK-LEVEL", "水箱液位", "液位处于安全范围", true)
+                ],
+                sourceEvidence),
+            new MaintenancePlan(
+                "MP-SEWAGE-STATION",
+                "SEWAGE-STATION-01",
+                "污水处理站水质与设备巡检",
+                MaintenanceTaskType.SafetyCheck,
+                1,
+                SeedTime.AddMinutes(50),
+                "给排水班工作人员",
+                [
+                    new InspectionChecklistItem("CHK-COD", "COD", "COD 未超过医疗废水阈值", true),
+                    new InspectionChecklistItem("CHK-PH", "PH", "PH 位于合规范围", true),
+                    new InspectionChecklistItem("CHK-FLOW", "处理流量", "处理流量无异常中断", true)
+                ],
+                sourceEvidence),
+            new MaintenancePlan(
                 "MP-ELV-MONTHLY",
                 "ELV-OPD-01",
                 "医梯月度安全巡检",
@@ -462,6 +522,30 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
             "电工班工作人员",
             []),
         new MaintenanceTask(
+            "MT-20260530-0006",
+            "MP-WATER-PUMP",
+            "WATER-PUMP-B1-01",
+            "B1 给水泵房稳压供水巡检",
+            MaintenanceTaskType.SafetyCheck,
+            MaintenanceTaskStatus.Due,
+            Priority.High,
+            SeedTime.AddMinutes(-8),
+            SeedTime.AddMinutes(70),
+            "给排水班工作人员",
+            []),
+        new MaintenanceTask(
+            "MT-20260530-0007",
+            "MP-SEWAGE-STATION",
+            "SEWAGE-STATION-01",
+            "污水处理站水质与设备巡检",
+            MaintenanceTaskType.SafetyCheck,
+            MaintenanceTaskStatus.Due,
+            Priority.Critical,
+            SeedTime.AddMinutes(-18),
+            SeedTime.AddMinutes(50),
+            "给排水班工作人员",
+            []),
+        new MaintenanceTask(
             "MT-20260530-0004",
             "MP-ELV-MONTHLY",
             "ELV-OPD-01",
@@ -481,6 +565,8 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
         new AssetLifecycleEvent(SeedTime.AddDays(-4), "ELV-OPD-01", "运行预警", "电梯维保组", "运行频次高于日均值，列入提前巡检"),
         new AssetLifecycleEvent(SeedTime.AddDays(-2), "CHW-B1-02", "能耗复核", "暖通班工作人员", "夜间节能策略复核通过"),
         new AssetLifecycleEvent(SeedTime.AddDays(-1), "PWR-LV-B1-IN-CAB", "强电巡检", "电工班工作人员", "完成低压进线柜三相电压和功率因数核查"),
+        new AssetLifecycleEvent(SeedTime.AddHours(-8), "WATER-PUMP-B1-01", "给水巡检", "给排水班工作人员", "完成稳压泵组压力与液位核查"),
+        new AssetLifecycleEvent(SeedTime.AddHours(-5), "SEWAGE-STATION-01", "水质复核", "给排水班工作人员", "完成污水站 COD 与 PH 复核"),
         new AssetLifecycleEvent(SeedTime.AddHours(-3), "WASTE-F1-01", "告警联动", "环境监管班组", "医废暂存间负压低于阈值，已进入预警池")
     ];
 

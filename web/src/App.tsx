@@ -956,6 +956,7 @@ const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = 
 }
 
 const serviceWorkflowTabs = ['服务受理', '工单调度', '任务执行', '验收回访', '服务评价'] as const
+type ServiceWorkflowTab = (typeof serviceWorkflowTabs)[number]
 
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5248'
 
@@ -1007,6 +1008,27 @@ function initialMenuItem(): string {
   return hashValue || '后勤首页'
 }
 
+function serviceTabFromMenuItem(item: string): ServiceWorkflowTab | null {
+  const exactTab = serviceWorkflowTabs.find((tab) => item.includes(tab))
+  if (exactTab) {
+    return exactTab
+  }
+
+  if (item.includes('工单')) {
+    return '工单调度'
+  }
+
+  if (item.includes('任务')) {
+    return '任务执行'
+  }
+
+  if (item.includes('验收')) {
+    return '验收回访'
+  }
+
+  return null
+}
+
 function App() {
   const [dashboard, setDashboard] = useState(localDashboard)
   const [blueprint, setBlueprint] = useState(localBlueprint)
@@ -1021,12 +1043,16 @@ function App() {
   const [source, setSource] = useState<'api' | 'local'>('local')
   const [activeMenuItem, setActiveMenuItem] = useState(() => initialMenuItem())
   const [activePage, setActivePage] = useState<WorkspacePage>(() => pageFromMenuItem(initialMenuItem()))
+  const [activeServiceTab, setActiveServiceTab] = useState<ServiceWorkflowTab>(
+    () => serviceTabFromMenuItem(initialMenuItem()) ?? '工单调度',
+  )
 
   useEffect(() => {
     function syncPageFromHash() {
       const menuItem = initialMenuItem()
       setActiveMenuItem(menuItem)
       setActivePage(pageFromMenuItem(menuItem))
+      setActiveServiceTab(serviceTabFromMenuItem(menuItem) ?? '工单调度')
     }
 
     syncPageFromHash()
@@ -1127,8 +1153,18 @@ function App() {
     const nextPage = pageFromMenuItem(item)
     setActiveMenuItem(item)
     setActivePage(nextPage)
+    if (nextPage === 'dispatch') {
+      setActiveServiceTab(serviceTabFromMenuItem(item) ?? '工单调度')
+    }
     window.history.replaceState(null, '', `#${encodeURIComponent(item)}`)
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function openServiceWorkflowTab(tab: ServiceWorkflowTab) {
+    setActivePage('dispatch')
+    setActiveMenuItem(tab)
+    setActiveServiceTab(tab)
+    window.history.replaceState(null, '', `#${encodeURIComponent(tab)}`)
   }
 
   async function loadDetail(workOrderNo: string, forceApi = false) {
@@ -1481,15 +1517,20 @@ function App() {
             <div className="service-workflow-header">
               <div>
                 <span>一站式服务流程</span>
-                <h2>工单调度</h2>
-                <p>按 SLA、风险等级、专业班组负载和 BIM 空间位置处理今日后勤工单。</p>
+                <h2>{activeServiceTab}</h2>
+                <p>
+                  {activeServiceTab === '工单调度'
+                    ? '按 SLA、风险等级、专业班组负载和 BIM 空间位置处理今日后勤工单。'
+                    : '围绕一站式服务闭环处理当前页面的主对象、操作和流转结果。'}
+                </p>
               </div>
               <div className="service-workflow-tabs" role="tablist" aria-label="一站式服务流程">
                 {serviceWorkflowTabs.map((tab) => (
                   <button
-                    aria-selected={tab === '工单调度'}
-                    className={tab === '工单调度' ? 'active' : ''}
+                    aria-selected={tab === activeServiceTab}
+                    className={tab === activeServiceTab ? 'active' : ''}
                     key={tab}
+                    onClick={() => openServiceWorkflowTab(tab)}
                     role="tab"
                     type="button"
                   >
@@ -1498,7 +1539,44 @@ function App() {
                 ))}
               </div>
             </div>
-            <div className="dispatch-workbench">
+            {activeServiceTab === '服务受理' && (
+              <div className="service-stage-grid" data-testid="service-intake-panel">
+                <section className="stage-card">
+                  <h2>请求来源</h2>
+                  <ul>
+                    <li>电话受理、移动报修、现场登记</li>
+                    <li>物联告警、巡检异常、BIM 空间入口</li>
+                    <li>科室联系人、空间、设备和问题描述</li>
+                  </ul>
+                </section>
+                <section className="stage-card primary">
+                  <h2>服务请求登记</h2>
+                  <p>登记请求、补齐空间和设备，生成待派工单。</p>
+                  <dl className="detail-list">
+                    <div>
+                      <dt>示例来源</dt>
+                      <dd>门诊医技楼共享大厅现场报修</dd>
+                    </div>
+                    <div>
+                      <dt>建议分类</dt>
+                      <dd>综合维修 / 高优先级 / 需调度确认</dd>
+                    </div>
+                    <div>
+                      <dt>空间绑定</dt>
+                      <dd>门诊医技楼 · 共享大厅</dd>
+                    </div>
+                  </dl>
+                  <button type="button">生成待派工单</button>
+                </section>
+                <section className="stage-card">
+                  <h2>受理校验</h2>
+                  <p>检查联系人、空间、设备、服务类型和重复工单，减少无效派工。</p>
+                </section>
+              </div>
+            )}
+
+            {activeServiceTab === '工单调度' && (
+              <div className="dispatch-workbench">
               <section>
                 <h2>工单池</h2>
                 <div className="work-order-list" data-testid="work-order-list">
@@ -1576,6 +1654,89 @@ function App() {
                 </ol>
               </section>
             </div>
+            )}
+
+            {activeServiceTab === '任务执行' && (
+              <div className="service-stage-grid" data-testid="task-execution-panel">
+                <section className="stage-card">
+                  <h2>我的任务</h2>
+                  <p>{selectedDetail.workOrder.title}</p>
+                  <small>{selectedDetail.location.building} · {selectedDetail.location.room}</small>
+                </section>
+                <section className="stage-card primary">
+                  <h2>现场处置</h2>
+                  <p>班组人员在这里接单、记录到场、补充现场说明，并提交完工证据。</p>
+                  <div className="action-bar">
+                    <button type="button" onClick={() => void transitionSelected('Accept', '接单', 'Accepted')}>
+                      接单
+                    </button>
+                    <button type="button" onClick={() => void transitionSelected('Suspend', '挂单', 'Suspended')}>
+                      挂单
+                    </button>
+                    <button type="button" onClick={() => void transitionSelected('Complete', '完工', 'PendingAcceptance')}>
+                      完工
+                    </button>
+                  </div>
+                </section>
+                <section className="stage-card">
+                  <h2>异常动作</h2>
+                  <p>缺备件、跨专业协同或现场条件不足时，挂单和转单必须写明原因。</p>
+                </section>
+              </div>
+            )}
+
+            {activeServiceTab === '验收回访' && (
+              <div className="service-stage-grid" data-testid="acceptance-review-panel">
+                <section className="stage-card">
+                  <h2>待验收工单</h2>
+                  <p>{selectedDetail.workOrder.workOrderNo}</p>
+                  <small>{selectedDetail.workOrder.title}</small>
+                </section>
+                <section className="stage-card primary">
+                  <h2>验收判断</h2>
+                  <p>核对完工说明、SLA 结果、现场证据和服务对象反馈，未达标可驳回整改。</p>
+                  <div className="action-bar">
+                    <button type="button" onClick={() => void transitionSelected('AcceptCompletion', '验收', 'InProgress')}>
+                      验收通过
+                    </button>
+                    <button type="button" onClick={() => void transitionSelected('RejectCompletion', '驳回', 'InProgress')}>
+                      驳回整改
+                    </button>
+                  </div>
+                </section>
+                <section className="stage-card">
+                  <h2>回访要点</h2>
+                  <p>确认问题是否解决、现场是否恢复、是否有重复故障或投诉风险。</p>
+                </section>
+              </div>
+            )}
+
+            {activeServiceTab === '服务评价' && (
+              <div className="service-stage-grid" data-testid="service-evaluation-panel">
+                <section className="stage-card">
+                  <h2>评价与投诉</h2>
+                  <p>服务对象对已关闭或待评价工单进行评分、反馈和投诉标记。</p>
+                </section>
+                <section className="stage-card primary">
+                  <h2>服务品质沉淀</h2>
+                  <p>SLA 达成、满意度、驳回、投诉和重复故障进入服务品质和考核指标。</p>
+                  <dl className="detail-list">
+                    <div>
+                      <dt>SLA</dt>
+                      <dd>{dispatchBoard.slaRisk.openWorkOrders} 个未闭环工单仍需跟踪</dd>
+                    </div>
+                    <div>
+                      <dt>风险</dt>
+                      <dd>{dispatchBoard.slaRisk.highestRiskLevel} / {dispatchBoard.slaRisk.highestRiskWorkOrderNo}</dd>
+                    </div>
+                  </dl>
+                </section>
+                <section className="stage-card">
+                  <h2>整改入口</h2>
+                  <p>低分评价或投诉应生成质量问题，并能追溯到班组、供应商和合同。</p>
+                </section>
+              </div>
+            )}
           </section>
 
           <section className="panel asset-maintenance-panel">

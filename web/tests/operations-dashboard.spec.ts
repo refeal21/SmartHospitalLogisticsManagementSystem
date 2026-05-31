@@ -90,6 +90,32 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
     await expect(page.getByTestId('work-order-timeline')).toBeVisible()
   })
 
+  test('一站式服务页签切换到服务受理和任务执行页面', async ({ page }) => {
+    await page.goto('/#服务受理')
+
+    await expect(page.getByRole('heading', { name: '服务受理', exact: true })).toBeVisible()
+    await expect(page.getByTestId('service-intake-panel')).toBeVisible()
+    await expect(page.getByText('登记请求、补齐空间和设备，生成待派工单。')).toBeVisible()
+
+    await page.getByRole('tab', { name: '任务执行' }).click()
+    await expect(page.getByRole('heading', { name: '任务执行', exact: true })).toBeVisible()
+    await expect(page.getByTestId('task-execution-panel')).toBeVisible()
+    await expect(page.getByText('我的任务')).toBeVisible()
+  })
+
+  test('验收回访和服务评价页面承接闭环结果', async ({ page }) => {
+    await page.goto('/#验收回访')
+
+    await expect(page.getByRole('heading', { name: '验收回访', exact: true })).toBeVisible()
+    await expect(page.getByTestId('acceptance-review-panel')).toBeVisible()
+    await expect(page.getByText('待验收工单')).toBeVisible()
+
+    await page.getByRole('tab', { name: '服务评价' }).click()
+    await expect(page.getByRole('heading', { name: '服务评价', exact: true })).toBeVisible()
+    await expect(page.getByTestId('service-evaluation-panel')).toBeVisible()
+    await expect(page.getByText('评价与投诉')).toBeVisible()
+  })
+
   test('资产台账与巡检保养支持异常转工单', async ({ page }) => {
     await page.goto('/')
 

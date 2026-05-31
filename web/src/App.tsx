@@ -1167,6 +1167,66 @@ function App() {
     window.history.replaceState(null, '', `#${encodeURIComponent(tab)}`)
   }
 
+  function createServiceIntakeWorkOrder() {
+    const acceptedOrder: WorkOrder = {
+      workOrderNo: 'WO-SR-20260531-0001',
+      title: '门诊大厅空调异常服务请求',
+      serviceType: '综合维修',
+      priority: 'High',
+      status: 'New',
+      location: {
+        campus: '同仁亦庄院区',
+        building: '门诊医技楼',
+        floor: '1F',
+        room: '共享大厅',
+        bimElementId: 'BIM-OPD-F1-HALL',
+      },
+      responsibleTeam: '待调度',
+      createdAt: '2026-05-31T10:00:00+08:00',
+      slaDueAt: '2026-05-31T12:00:00+08:00',
+    }
+    const acceptedDetail = buildLocalDetail(acceptedOrder)
+
+    setDispatchBoard((current) => {
+      const hadOrder = current.workOrders.some((order) => order.workOrderNo === acceptedOrder.workOrderNo)
+      const existingOrders = current.workOrders.filter((order) => order.workOrderNo !== acceptedOrder.workOrderNo)
+      const existingRecommendations = current.recommendations.filter(
+        (recommendation) => recommendation.workOrderNo !== acceptedOrder.workOrderNo,
+      )
+
+      return {
+        ...current,
+        workOrders: [acceptedOrder, ...existingOrders],
+        recommendations: [
+          {
+            workOrderNo: acceptedOrder.workOrderNo,
+            recommendedTeam: '综合维修班',
+            reason: '服务受理生成的综合维修请求，按空间和专业派给综合维修班',
+            priority: acceptedOrder.priority,
+            slaMinutesRemaining: 120,
+          },
+          ...existingRecommendations,
+        ],
+        slaRisk: {
+          ...current.slaRisk,
+          openWorkOrders: existingOrders.length + 1,
+          dueSoonWorkOrders: hadOrder ? current.slaRisk.dueSoonWorkOrders : current.slaRisk.dueSoonWorkOrders + 1,
+          highestRiskLevel: current.slaRisk.highestRiskLevel === 'High' ? 'High' : 'Medium',
+          highestRiskWorkOrderNo: current.slaRisk.highestRiskWorkOrderNo ?? acceptedOrder.workOrderNo,
+        },
+      }
+    })
+    setDashboard((current) => ({
+      ...current,
+      openWorkOrders: current.workOrders.some((order) => order.workOrderNo === acceptedOrder.workOrderNo)
+        ? current.openWorkOrders
+        : current.openWorkOrders + 1,
+      workOrders: [acceptedOrder, ...current.workOrders.filter((order) => order.workOrderNo !== acceptedOrder.workOrderNo)],
+    }))
+    setSelectedDetail(acceptedDetail)
+    openServiceWorkflowTab('工单调度')
+  }
+
   async function loadDetail(workOrderNo: string, forceApi = false) {
     if (source === 'api' || forceApi) {
       const response = await fetch(`${apiBase}/api/operations/work-orders/${workOrderNo}`)
@@ -1566,7 +1626,9 @@ function App() {
                       <dd>门诊医技楼 · 共享大厅</dd>
                     </div>
                   </dl>
-                  <button type="button">生成待派工单</button>
+                  <button type="button" onClick={createServiceIntakeWorkOrder}>
+                    生成待派工单
+                  </button>
                 </section>
                 <section className="stage-card">
                   <h2>受理校验</h2>

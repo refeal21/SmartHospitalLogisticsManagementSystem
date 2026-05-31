@@ -116,6 +116,17 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
     await expect(page.getByText('评价与投诉')).toBeVisible()
   })
 
+  test('服务受理生成待派工单并进入调度池', async ({ page }) => {
+    await page.goto('/#服务受理')
+
+    await page.getByRole('button', { name: '生成待派工单' }).click()
+
+    await expect(page.getByRole('heading', { name: '工单调度', exact: true })).toBeVisible()
+    await expect(page.getByText('WO-SR-20260531-0001')).toBeVisible()
+    await expect(page.getByTestId('work-order-detail').getByText('门诊大厅空调异常服务请求')).toBeVisible()
+    await expect(page.getByTestId('work-order-detail').getByText('状态：新建', { exact: true })).toBeVisible()
+  })
+
   test('资产台账与巡检保养支持异常转工单', async ({ page }) => {
     await page.goto('/')
 

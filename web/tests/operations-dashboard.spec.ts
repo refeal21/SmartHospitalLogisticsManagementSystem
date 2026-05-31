@@ -127,6 +127,111 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
     await expect(page.getByTestId('work-order-detail').getByText('状态：新建', { exact: true })).toBeVisible()
   })
 
+  test('服务受理优先调用API生成待派工单', async ({ page }) => {
+    const corsHeaders = {
+      'Access-Control-Allow-Headers': 'content-type',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Origin': '*',
+      'Content-Type': 'application/json',
+    }
+
+    await page.route('**/api/operations/service-requests', async (route) => {
+      if (route.request().method() === 'OPTIONS') {
+        await route.fulfill({ status: 200, headers: corsHeaders })
+        return
+      }
+
+      await route.fulfill({
+        status: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({
+          requestNo: 'SR-API-0001',
+          sourceType: 'Manual',
+          requesterName: '门诊护士站',
+          requesterDepartment: '门诊部',
+          serviceType: '综合维修',
+          priority: 'High',
+          description: 'API受理的门诊大厅空调异常',
+          location: {
+            campus: '同仁亦庄院区',
+            building: '门诊医技楼',
+            floor: 'F1',
+            room: '共享大厅',
+            bimElementId: 'BIM-OPD-F1-HALL',
+          },
+          status: 'Accepted',
+          createdAt: '2026-05-31T10:00:00+08:00',
+          convertedWorkOrderNo: null,
+        }),
+      })
+    })
+
+    await page.route('**/api/operations/service-requests/SR-API-0001/convert', async (route) => {
+      if (route.request().method() === 'OPTIONS') {
+        await route.fulfill({ status: 200, headers: corsHeaders })
+        return
+      }
+
+      await route.fulfill({
+        status: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({
+          workOrder: {
+            workOrderNo: 'WO-SR-API-0001',
+            title: 'API受理的门诊大厅空调异常',
+            serviceType: '综合维修',
+            priority: 'High',
+            status: 'New',
+            location: {
+              campus: '同仁亦庄院区',
+              building: '门诊医技楼',
+              floor: 'F1',
+              room: '共享大厅',
+              bimElementId: 'BIM-OPD-F1-HALL',
+            },
+            responsibleTeam: '未派工',
+            createdAt: '2026-05-31T10:00:00+08:00',
+            slaDueAt: '2026-05-31T12:00:00+08:00',
+          },
+          location: {
+            campus: '同仁亦庄院区',
+            building: '门诊医技楼',
+            floor: 'F1',
+            room: '共享大厅',
+            bimElementId: 'BIM-OPD-F1-HALL',
+          },
+          sourceEvidence: [
+            {
+              featureName: '一站式服务受理',
+              sources: ['中科医信', 'PPT', '北建院'],
+              evidenceSummary: 'API受理服务请求后转工单。',
+            },
+          ],
+          timeline: [
+            {
+              occurredAt: '2026-05-31T10:00:00+08:00',
+              operator: '一站式受理员',
+              action: '受理建单',
+              fromStatus: 'New',
+              toStatus: 'New',
+              remark: 'API生成待派工单',
+              rating: null,
+            },
+          ],
+          slaRiskLevel: 'Medium',
+          slaMinutesRemaining: 120,
+          allowedActions: ['Dispatch'],
+        }),
+      })
+    })
+
+    await page.goto('/#服务受理')
+    await page.getByRole('button', { name: '生成待派工单' }).click()
+
+    await expect(page.getByText('WO-SR-API-0001')).toBeVisible()
+    await expect(page.getByTestId('work-order-detail').getByText('API受理的门诊大厅空调异常')).toBeVisible()
+  })
+
   test('资产台账与巡检保养支持异常转工单', async ({ page }) => {
     await page.goto('/')
 

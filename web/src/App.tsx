@@ -1169,8 +1169,8 @@ function App() {
     window.history.replaceState(null, '', `#${encodeURIComponent(tab)}`)
   }
 
-  function createServiceIntakeWorkOrder() {
-    const acceptedOrder: WorkOrder = {
+  async function createServiceIntakeWorkOrder() {
+    const localOrder: WorkOrder = {
       workOrderNo: 'WO-SR-20260531-0001',
       title: '门诊大厅空调异常服务请求',
       serviceType: '综合维修',
@@ -1187,7 +1187,51 @@ function App() {
       createdAt: '2026-05-31T10:00:00+08:00',
       slaDueAt: '2026-05-31T12:00:00+08:00',
     }
-    const acceptedDetail = buildLocalDetail(acceptedOrder)
+    const localDetail = buildLocalDetail(localOrder)
+
+    try {
+      const serviceRequestResponse = await fetch(`${apiBase}/api/operations/service-requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceType: 'Manual',
+          requesterName: '门诊护士站',
+          requesterDepartment: '门诊部',
+          serviceType: '综合维修',
+          priority: 'High',
+          description: '门诊大厅空调异常，候诊区温度偏高',
+          location: localOrder.location,
+        }),
+      })
+
+      if (serviceRequestResponse.ok) {
+        const serviceRequest = (await serviceRequestResponse.json()) as { requestNo: string }
+        const conversionResponse = await fetch(
+          `${apiBase}/api/operations/service-requests/${serviceRequest.requestNo}/convert`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              acceptedBy: '一站式受理员',
+              remark: '信息完整，生成待派工单',
+            }),
+          },
+        )
+
+        if (conversionResponse.ok) {
+          applyGeneratedWorkOrderDetail((await conversionResponse.json()) as WorkOrderDetail)
+          return
+        }
+      }
+    } catch {
+      // API 不可用时使用本地种子流程，保证前端演示和离线测试仍能闭环。
+    }
+
+    applyGeneratedWorkOrderDetail(localDetail)
+  }
+
+  function applyGeneratedWorkOrderDetail(detail: WorkOrderDetail) {
+    const acceptedOrder = detail.workOrder
 
     setDispatchBoard((current) => {
       const hadOrder = current.workOrders.some((order) => order.workOrderNo === acceptedOrder.workOrderNo)
@@ -1225,7 +1269,7 @@ function App() {
         : current.openWorkOrders + 1,
       workOrders: [acceptedOrder, ...current.workOrders.filter((order) => order.workOrderNo !== acceptedOrder.workOrderNo)],
     }))
-    setSelectedDetail(acceptedDetail)
+    setSelectedDetail(detail)
     openServiceWorkflowTab('工单调度')
   }
 

@@ -47,6 +47,22 @@ api.MapGet("/dispatch-board", (IWorkOrderDispatchService service) => service.Get
 api.MapGet("/work-orders/active", (IOperationsDashboardService service) => service.GetActiveWorkOrders())
     .WithName("GetActiveWorkOrders");
 
+api.MapPost("/service-requests", (
+        CreateServiceRequestCommand command,
+        IWorkOrderDispatchService service) =>
+    Results.Ok(service.CreateServiceRequest(command)))
+    .WithName("CreateServiceRequest");
+
+api.MapPost("/service-requests/{requestNo}/convert", (
+        string requestNo,
+        ConvertServiceRequestCommand command,
+        IWorkOrderDispatchService service) =>
+    {
+        var result = service.ConvertServiceRequest(requestNo, command);
+        return ToServiceRequestConversionHttpResult(result);
+    })
+    .WithName("ConvertServiceRequestToWorkOrder");
+
 api.MapGet("/work-orders/{workOrderNo}", (string workOrderNo, IWorkOrderDispatchService service) =>
     service.GetWorkOrderDetail(workOrderNo) is { } detail
         ? Results.Ok(detail)
@@ -114,6 +130,18 @@ api.MapPost("/iot-readings", (TelemetryIngestionCommand command, IIotIntegration
 app.Run();
 
 static IResult ToHttpResult(DispatchOperationResult result)
+{
+    if (result.Succeeded && result.Detail is not null)
+    {
+        return Results.Ok(result.Detail);
+    }
+
+    return result.NotFound
+        ? Results.NotFound(new { error = result.ErrorMessage })
+        : Results.BadRequest(new { error = result.ErrorMessage });
+}
+
+static IResult ToServiceRequestConversionHttpResult(ServiceRequestConversionResult result)
 {
     if (result.Succeeded && result.Detail is not null)
     {

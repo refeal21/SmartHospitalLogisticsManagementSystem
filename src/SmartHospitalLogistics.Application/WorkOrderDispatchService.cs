@@ -11,6 +11,10 @@ public interface IWorkOrderDispatchService
     DispatchOperationResult Dispatch(string workOrderNo, DispatchWorkOrderCommand command);
 
     DispatchOperationResult Transition(string workOrderNo, TransitionWorkOrderCommand command);
+
+    ServiceRequest CreateServiceRequest(CreateServiceRequestCommand command);
+
+    ServiceRequestConversionResult ConvertServiceRequest(string requestNo, ConvertServiceRequestCommand command);
 }
 
 public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
@@ -18,6 +22,7 @@ public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
     private static readonly DateTimeOffset SeedTime = new(2026, 5, 30, 9, 30, 0, TimeSpan.FromHours(8));
     private readonly object _sync = new();
     private readonly List<WorkOrder> _workOrders;
+    private readonly List<ServiceRequest> _serviceRequests;
     private readonly List<TeamLoad> _teamLoads;
     private readonly Dictionary<string, List<WorkOrderTimelineEntry>> _timeline;
 
@@ -35,6 +40,7 @@ public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
             new WorkOrder("WO-20260530-0003", "眼科病区被服补给", "后勤配送", Priority.Normal, WorkOrderStatus.Accepted, inpatientWard, "被服配送组", SeedTime.AddMinutes(-18), SeedTime.AddHours(3)),
             new WorkOrder("WO-20260530-0004", "冷站机房夜间节能策略复核", "能耗优化", Priority.Normal, WorkOrderStatus.PendingAcceptance, energyRoom, "能源管理组", SeedTime.AddHours(-4), SeedTime.AddHours(4))
         ];
+        _serviceRequests = [];
 
         _teamLoads =
         [
@@ -130,6 +136,82 @@ public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
         }
     }
 
+    public ServiceRequest CreateServiceRequest(CreateServiceRequestCommand command)
+    {
+        lock (_sync)
+        {
+            var requestNo = $"SR-20260531-{_serviceRequests.Count + 1:0000}";
+            var request = new ServiceRequest(
+                requestNo,
+                command.SourceType,
+                command.RequesterName,
+                command.RequesterDepartment,
+                command.ServiceType,
+                command.Priority,
+                command.Description,
+                command.Location,
+                ServiceRequestStatus.Accepted,
+                SeedTime.AddDays(1).AddMinutes(_serviceRequests.Count),
+                null);
+
+            _serviceRequests.Add(request);
+            return request;
+        }
+    }
+
+    public ServiceRequestConversionResult ConvertServiceRequest(string requestNo, ConvertServiceRequestCommand command)
+    {
+        lock (_sync)
+        {
+            var requestIndex = _serviceRequests.FindIndex(request =>
+                string.Equals(request.RequestNo, requestNo, StringComparison.OrdinalIgnoreCase));
+            if (requestIndex < 0)
+            {
+                return new ServiceRequestConversionResult(false, $"服务请求 {requestNo} 不存在", null, null, NotFound: true);
+            }
+
+            var request = _serviceRequests[requestIndex];
+            if (request.ConvertedWorkOrderNo is { Length: > 0 } existingWorkOrderNo)
+            {
+                var existingDetail = GetWorkOrderDetail(existingWorkOrderNo);
+                return new ServiceRequestConversionResult(true, null, request, existingDetail);
+            }
+
+            var workOrderNo = $"WO-{request.RequestNo}";
+            var workOrder = new WorkOrder(
+                workOrderNo,
+                $"{request.Location.Room}{request.ServiceType}服务请求",
+                request.ServiceType,
+                request.Priority,
+                WorkOrderStatus.New,
+                request.Location,
+                "未派工",
+                request.CreatedAt,
+                request.CreatedAt.AddHours(request.Priority is Priority.Critical ? 1 : 2));
+
+            _workOrders.Add(workOrder);
+            _timeline[workOrder.WorkOrderNo] =
+            [
+                new WorkOrderTimelineEntry(
+                    request.CreatedAt,
+                    command.AcceptedBy,
+                    "受理建单",
+                    WorkOrderStatus.New,
+                    WorkOrderStatus.New,
+                    command.Remark)
+            ];
+
+            var convertedRequest = request with
+            {
+                Status = ServiceRequestStatus.Converted,
+                ConvertedWorkOrderNo = workOrder.WorkOrderNo
+            };
+            _serviceRequests[requestIndex] = convertedRequest;
+
+            return new ServiceRequestConversionResult(true, null, convertedRequest, BuildDetail(workOrder));
+        }
+    }
+
     private static bool TryTransition(
         WorkOrder current,
         TransitionWorkOrderCommand command,
@@ -202,6 +284,15 @@ public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
             "工单全流程管理",
             ["中科医信", "PPT"],
             "竞品明确报修、派单、接单、挂单、转单、完工、验收、评价；PPT要求一站式服务闭环。");
+
+        if (order.WorkOrderNo.StartsWith("WO-SR-", StringComparison.OrdinalIgnoreCase))
+        {
+            return
+            [
+                new FeatureEvidence("一站式服务受理", ["中科医信", "PPT", "北建院"], "服务请求受理、空间定位和专业班组映射来自竞品流程、PPT一站式服务中心和客户系统角色字段。"),
+                baseEvidence
+            ];
+        }
 
         if (order.ServiceType.Contains("环境", StringComparison.Ordinal))
         {

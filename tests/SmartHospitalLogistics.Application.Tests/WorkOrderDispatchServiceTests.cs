@@ -95,6 +95,37 @@ public sealed class WorkOrderDispatchServiceTests
     }
 
     [Fact]
+    public void ServiceRequestConversionCreatesTraceableNewWorkOrder()
+    {
+        var request = _service.CreateServiceRequest(new CreateServiceRequestCommand(
+            "Manual",
+            "门诊护士站",
+            "门诊部",
+            "综合维修",
+            Priority.High,
+            "门诊大厅空调异常，候诊区温度偏高",
+            new SpatialLocation("同仁亦庄院区", "门诊医技楼", "F1", "共享大厅", "BIM-OPD-F1-HALL")));
+
+        var converted = _service.ConvertServiceRequest(
+            request.RequestNo,
+            new ConvertServiceRequestCommand("一站式受理员", "信息完整，生成待派工单"));
+        var convertedAgain = _service.ConvertServiceRequest(
+            request.RequestNo,
+            new ConvertServiceRequestCommand("一站式受理员", "重复点击不应重复生成"));
+        var board = _service.GetDispatchBoard();
+
+        Assert.Equal(ServiceRequestStatus.Accepted, request.Status);
+        Assert.True(converted.Succeeded, converted.ErrorMessage);
+        Assert.NotNull(converted.Detail);
+        Assert.StartsWith("WO-SR-", converted.Detail.WorkOrder.WorkOrderNo);
+        Assert.Equal(WorkOrderStatus.New, converted.Detail.WorkOrder.Status);
+        Assert.Contains(converted.Detail.SourceEvidence, evidence => evidence.FeatureName == "一站式服务受理");
+        Assert.True(convertedAgain.Succeeded, convertedAgain.ErrorMessage);
+        Assert.Equal(converted.Detail.WorkOrder.WorkOrderNo, convertedAgain.Detail?.WorkOrder.WorkOrderNo);
+        Assert.Single(board.WorkOrders, order => order.WorkOrderNo == converted.Detail.WorkOrder.WorkOrderNo);
+    }
+
+    [Fact]
     public void InvalidTransitionReturnsFailureAndDoesNotModifyWorkOrder()
     {
         var before = _service.GetWorkOrderDetail("WO-20260530-0002");

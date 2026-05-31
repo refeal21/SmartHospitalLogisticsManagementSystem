@@ -22,6 +22,13 @@ public enum WorkOrderStatus
     Escalated
 }
 
+public enum ServiceRequestStatus
+{
+    Accepted,
+    Converted,
+    Cancelled
+}
+
 public enum Priority
 {
     Low,
@@ -137,6 +144,32 @@ public sealed record WorkOrder(
     string ResponsibleTeam,
     DateTimeOffset CreatedAt,
     DateTimeOffset SlaDueAt);
+
+public sealed record CreateServiceRequestCommand(
+    string SourceType,
+    string RequesterName,
+    string RequesterDepartment,
+    string ServiceType,
+    Priority Priority,
+    string Description,
+    SpatialLocation Location);
+
+public sealed record ConvertServiceRequestCommand(
+    string AcceptedBy,
+    string Remark);
+
+public sealed record ServiceRequest(
+    string RequestNo,
+    string SourceType,
+    string RequesterName,
+    string RequesterDepartment,
+    string ServiceType,
+    Priority Priority,
+    string Description,
+    SpatialLocation Location,
+    ServiceRequestStatus Status,
+    DateTimeOffset CreatedAt,
+    string? ConvertedWorkOrderNo);
 
 public enum WorkOrderTransitionAction
 {
@@ -270,6 +303,13 @@ public sealed record DispatchBoard(
 public sealed record DispatchOperationResult(
     bool Succeeded,
     string? ErrorMessage,
+    WorkOrderDetail? Detail,
+    bool NotFound = false);
+
+public sealed record ServiceRequestConversionResult(
+    bool Succeeded,
+    string? ErrorMessage,
+    ServiceRequest? Request,
     WorkOrderDetail? Detail,
     bool NotFound = false);
 

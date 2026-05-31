@@ -67,4 +67,35 @@ public sealed class OperationsApiTests : IClassFixture<WebApplicationFactory<Pro
 
         Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
     }
+
+    [Fact]
+    public async Task ServiceRequestApisCreateRequestAndConvertToWorkOrder()
+    {
+        var createResponse = await _client.PostAsJsonAsync(
+            "/api/operations/service-requests",
+            new CreateServiceRequestCommand(
+                "Manual",
+                "门诊护士站",
+                "门诊部",
+                "综合维修",
+                Priority.High,
+                "门诊大厅空调异常，候诊区温度偏高",
+                new SpatialLocation("同仁亦庄院区", "门诊医技楼", "F1", "共享大厅", "BIM-OPD-F1-HALL")),
+            JsonOptions);
+        createResponse.EnsureSuccessStatusCode();
+
+        var request = await createResponse.Content.ReadFromJsonAsync<ServiceRequest>(JsonOptions);
+        Assert.Equal(ServiceRequestStatus.Accepted, request?.Status);
+
+        var convertResponse = await _client.PostAsJsonAsync(
+            $"/api/operations/service-requests/{request!.RequestNo}/convert",
+            new ConvertServiceRequestCommand("一站式受理员", "信息完整，生成待派工单"),
+            JsonOptions);
+        convertResponse.EnsureSuccessStatusCode();
+
+        var detail = await convertResponse.Content.ReadFromJsonAsync<WorkOrderDetail>(JsonOptions);
+        Assert.NotNull(detail);
+        Assert.StartsWith("WO-SR-", detail.WorkOrder.WorkOrderNo);
+        Assert.Equal(WorkOrderStatus.New, detail.WorkOrder.Status);
+    }
 }

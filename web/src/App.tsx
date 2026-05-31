@@ -2342,6 +2342,26 @@ const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5248'
 
 function pageFromMenuItem(item: string): WorkspacePage {
   const normalized = item.toLowerCase()
+  if (normalized.includes('overview') || normalized.includes('home')) {
+    return 'overview'
+  }
+
+  if (normalized.includes('dispatch') || normalized.includes('work-order')) {
+    return 'dispatch'
+  }
+
+  if (normalized.includes('assets') || normalized.includes('asset-maintenance')) {
+    return 'assets'
+  }
+
+  if (normalized.includes('iot') || normalized.includes('iot-catalog')) {
+    return 'iot'
+  }
+
+  if (normalized.includes('evidence') || normalized.includes('source-trace')) {
+    return 'evidence'
+  }
+
   if (
     normalized.includes('platform-governance') ||
     normalized.includes('governance') ||
@@ -4558,6 +4578,48 @@ function App() {
         </section>
 
         <section className="content-grid" data-active-page={activePage}>
+          <section className="panel overview-command-panel">
+            <PanelHeader title="运营指挥总览" meta="风险 / 工单 / 空间 / 专项 / 治理" />
+            <div className="overview-command-grid" data-testid="overview-command-center">
+              <section className="overview-primary">
+                <span>今日重点</span>
+                <h2>高风险工单待闭环</h2>
+                <p>{selectedDetail.workOrder.title}</p>
+                <div className="overview-actions">
+                  <button type="button" onClick={() => openServiceWorkflowTab(serviceWorkflowTabs[1])}>
+                    进入调度
+                  </button>
+                  <button type="button" onClick={() => openWorkspacePage('BIM 绌洪棿')}>
+                    查看空间
+                  </button>
+                </div>
+              </section>
+
+              <section className="overview-risk-list">
+                <h2>风险闭环</h2>
+                {[
+                  { label: 'SLA 风险', value: dispatchBoard.slaRisk.dueSoonWorkOrders, tone: 'red' },
+                  { label: '活动告警', value: alarmBoard.alarms.filter((alarm) => alarm.status !== 'Closed').length, tone: 'orange' },
+                  { label: '治理动作', value: platformGovernanceBoard.kpis.openActionCount, tone: 'blue' },
+                ].map((item) => (
+                  <article className={`overview-risk-item ${item.tone}`} key={item.label}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                  </article>
+                ))}
+              </section>
+
+              <section className="overview-route">
+                <h2>主流程</h2>
+                <ol>
+                  <li>请求/告警/巡检异常</li>
+                  <li>统一调度与班组执行</li>
+                  <li>验收评价与治理复盘</li>
+                </ol>
+              </section>
+            </div>
+          </section>
+
           <section className="panel dispatch-panel">
             <PanelHeader title="工单调度中心" meta="按 SLA / 优先级 / 班组负载派工" />
             <div className="service-workflow-header">

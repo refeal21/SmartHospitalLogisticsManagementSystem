@@ -327,6 +327,7 @@ type IotSystemCategory =
   | 'EnvironmentQuality'
   | 'Sewage'
 type TelemetryRiskLevel = 'Normal' | 'Warning' | 'Critical'
+type MonitoringAlarmStatus = 'New' | 'Acknowledged' | 'ConvertedToWorkOrder' | 'Closed'
 type ThresholdDirection = 'Above' | 'Below' | 'OutsideRange'
 
 type IotSystemProfile = {
@@ -377,6 +378,31 @@ type TelemetryReading = {
   ruleSummary: string
 }
 
+type MonitoringAlarmEvent = {
+  alarmNo: string
+  pointCode: string
+  metricCode: string
+  title: string
+  riskLevel: TelemetryRiskLevel
+  status: MonitoringAlarmStatus
+  location: SpatialLocation
+  value: number
+  unit: string
+  triggeredAt: string
+  ruleSummary: string
+  responsibleTeam: string
+  workOrderNo?: string | null
+  acknowledgedBy?: string | null
+  acknowledgedAt?: string | null
+  lastRemark?: string | null
+}
+
+type MonitoringAlarmBoard = {
+  generatedAt: string
+  alarms: MonitoringAlarmEvent[]
+  sourceEvidence: FeatureEvidence[]
+}
+
 type IotPointDetail = {
   point: IotMonitoringPoint
   thresholdRules: TelemetryThresholdRule[]
@@ -403,7 +429,7 @@ type TelemetryIngestionResult = {
   notFound: boolean
 }
 
-type WorkspacePage = 'overview' | 'dispatch' | 'assets' | 'iot' | 'spatial' | 'evidence'
+type WorkspacePage = 'overview' | 'dispatch' | 'assets' | 'iot' | 'alerts' | 'spatial' | 'evidence'
 
 const locations = {
   lobby: {
@@ -874,6 +900,56 @@ const localIotCatalog: IotIntegrationCatalog = {
   sourceEvidence: iotSourceEvidence,
 }
 
+const alarmSourceEvidence: FeatureEvidence[] = [
+  {
+    featureName: '环境监管预警池',
+    sources: ['PPT', '中科医信'],
+    evidenceSummary: 'PPT 要求点位采集、阈值策略、预警池、报警策略和处置闭环；竞品包含统一报警和专项报警处理。',
+  },
+  {
+    featureName: '客户物联告警联动',
+    sources: ['北建院', 'PPT', '中科医信'],
+    evidenceSummary: '客户物联读数触发阈值后进入预警池，确认后生成真实处置工单并进入一站式调度池。',
+  },
+]
+
+const localMonitoringAlarmBoard: MonitoringAlarmBoard = {
+  generatedAt: '2026-05-30T09:30:00+08:00',
+  alarms: [
+    {
+      alarmNo: 'ALM-MEDGAS-O2-8F-PRESSURE-20260530102800',
+      pointCode: 'MEDGAS-O2-8F',
+      metricCode: 'pressure',
+      title: '住院 8F 氧气压力监测点压力异常',
+      riskLevel: 'Critical',
+      status: 'New',
+      location: locations.ward,
+      value: 0.31,
+      unit: 'MPa',
+      triggeredAt: '2026-05-30T10:28:00+08:00',
+      ruleSummary: '医用氧气压力低于阈值需告警处置',
+      responsibleTeam: '医气维保人员',
+      lastRemark: '由物联阈值规则自动生成预警事件',
+    },
+    {
+      alarmNo: 'ALM-WASTE-F1-NEGATIVE-PRESSURE-20260530092700',
+      pointCode: 'WASTE-F1-01',
+      metricCode: 'negativePressure',
+      title: '医废暂存间负压异常',
+      riskLevel: 'Critical',
+      status: 'Acknowledged',
+      location: locations.waste,
+      value: -3.2,
+      unit: 'Pa',
+      triggeredAt: '2026-05-30T09:27:00+08:00',
+      ruleSummary: '医废暂存间负压低于生命安全阈值',
+      responsibleTeam: '环境监管班组',
+      lastRemark: '环境监管班组已确认，待转处置工单',
+    },
+  ],
+  sourceEvidence: alarmSourceEvidence,
+}
+
 const statusLabels: Record<WorkOrderStatus | FacilityStatus | SignalStatus, string> = {
   New: '新建',
   Dispatched: '已派工',
@@ -930,6 +1006,13 @@ const telemetryRiskLabels: Record<TelemetryRiskLevel, string> = {
   Critical: '严重',
 }
 
+const alarmStatusLabels: Record<MonitoringAlarmStatus, string> = {
+  New: '新告警',
+  Acknowledged: '已确认',
+  ConvertedToWorkOrder: '已转工单',
+  Closed: '已关闭',
+}
+
 const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = {
   overview: {
     title: '后勤运营总览',
@@ -947,6 +1030,10 @@ const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = 
     title: '物联点位工作台',
     summary: '聚焦客户调研数据：系统分类、点位目录、时序字段、阈值规则和异常读数。',
   },
+  alerts: {
+    title: '环境预警处置工作台',
+    summary: '聚焦物联告警：预警池、告警详情、确认处置、转工单和调度池联动。',
+  },
   spatial: {
     title: 'BIM 空间运维工作台',
     summary: '聚焦空间定位：设备、告警、工单和班组负载在同一空间语境里联动。',
@@ -963,8 +1050,12 @@ type ServiceWorkflowTab = (typeof serviceWorkflowTabs)[number]
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5248'
 
 function pageFromMenuItem(item: string): WorkspacePage {
-  if (item.includes('首页') || item.includes('待办') || item.includes('风险')) {
+  if (item.includes('首页') || item.includes('待办')) {
     return 'overview'
+  }
+
+  if (item.includes('风险告警') || item.includes('预警') || item.includes('报警策略') || item.includes('医废处置')) {
+    return 'alerts'
   }
 
   if (item.includes('服务') || item.includes('工单') || item.includes('任务') || item.includes('验收')) {
@@ -1042,6 +1133,11 @@ function App() {
   const [iotCatalog, setIotCatalog] = useState(localIotCatalog)
   const [selectedIotPoint, setSelectedIotPoint] = useState(() => buildLocalIotPointDetail('MEDGAS-O2-8F'))
   const [lastTelemetryResult, setLastTelemetryResult] = useState<TelemetryIngestionResult | null>(null)
+  const [alarmBoard, setAlarmBoard] = useState(localMonitoringAlarmBoard)
+  const [selectedAlarm, setSelectedAlarm] = useState<MonitoringAlarmEvent | null>(
+    () => localMonitoringAlarmBoard.alarms[0] ?? null,
+  )
+  const [convertedAlarmDetail, setConvertedAlarmDetail] = useState<WorkOrderDetail | null>(null)
   const [source, setSource] = useState<'api' | 'local'>('local')
   const [activeMenuItem, setActiveMenuItem] = useState(() => initialMenuItem())
   const [activePage, setActivePage] = useState<WorkspacePage>(() => pageFromMenuItem(initialMenuItem()))
@@ -1071,14 +1167,23 @@ function App() {
       fetch(`${apiBase}/api/operations/dispatch-board`, { signal: controller.signal }),
       fetch(`${apiBase}/api/operations/asset-maintenance-board`, { signal: controller.signal }),
       fetch(`${apiBase}/api/operations/iot-catalog`, { signal: controller.signal }),
+      fetch(`${apiBase}/api/operations/monitoring-alarms`, { signal: controller.signal }),
     ])
-      .then(async ([dashboardResponse, blueprintResponse, boardResponse, assetBoardResponse, iotCatalogResponse]) => {
+      .then(async ([
+        dashboardResponse,
+        blueprintResponse,
+        boardResponse,
+        assetBoardResponse,
+        iotCatalogResponse,
+        alarmBoardResponse,
+      ]) => {
         if (
           !dashboardResponse.ok ||
           !blueprintResponse.ok ||
           !boardResponse.ok ||
           !assetBoardResponse.ok ||
-          !iotCatalogResponse.ok
+          !iotCatalogResponse.ok ||
+          !alarmBoardResponse.ok
         ) {
           throw new Error('Logistics API unavailable')
         }
@@ -1086,11 +1191,14 @@ function App() {
         const board = (await boardResponse.json()) as DispatchBoard
         const maintenanceBoard = (await assetBoardResponse.json()) as AssetMaintenanceBoard
         const fetchedIotCatalog = (await iotCatalogResponse.json()) as IotIntegrationCatalog
+        const fetchedAlarmBoard = (await alarmBoardResponse.json()) as MonitoringAlarmBoard
         setDashboard((await dashboardResponse.json()) as OperationsDashboard)
         setBlueprint((await blueprintResponse.json()) as LogisticsBlueprint)
         setDispatchBoard(board)
         setAssetBoard(maintenanceBoard)
         setIotCatalog(fetchedIotCatalog)
+        setAlarmBoard(fetchedAlarmBoard)
+        setSelectedAlarm(fetchedAlarmBoard.alarms[0] ?? null)
         setSource('api')
 
         const firstWorkOrderNo = board.workOrders[0]?.workOrderNo
@@ -1150,6 +1258,8 @@ function App() {
     (task) => task.assetCode === selectedAssetDetail.asset.assetCode,
   )
   const pageProfile = pageProfiles[activePage]
+  const activeAlarm = selectedAlarm ?? alarmBoard.alarms[0] ?? null
+  const selectedAlarmEvidence = alarmBoard.sourceEvidence.length > 0 ? alarmBoard.sourceEvidence : alarmSourceEvidence
 
   function openWorkspacePage(item: string) {
     const nextPage = pageFromMenuItem(item)
@@ -1190,7 +1300,7 @@ function App() {
     const localDetail = buildLocalDetail(localOrder)
 
     try {
-      const serviceRequestResponse = await fetch(`${apiBase}/api/operations/service-requests`, {
+      const serviceRequestResponse = await fetchWithTimeout(`${apiBase}/api/operations/service-requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1206,7 +1316,7 @@ function App() {
 
       if (serviceRequestResponse.ok) {
         const serviceRequest = (await serviceRequestResponse.json()) as { requestNo: string }
-        const conversionResponse = await fetch(
+        const conversionResponse = await fetchWithTimeout(
           `${apiBase}/api/operations/service-requests/${serviceRequest.requestNo}/convert`,
           {
             method: 'POST',
@@ -1230,7 +1340,10 @@ function App() {
     applyGeneratedWorkOrderDetail(localDetail)
   }
 
-  function applyGeneratedWorkOrderDetail(detail: WorkOrderDetail) {
+  function applyGeneratedWorkOrderDetail(
+    detail: WorkOrderDetail,
+    options: { openDispatch?: boolean } = { openDispatch: true },
+  ) {
     const acceptedOrder = detail.workOrder
 
     setDispatchBoard((current) => {
@@ -1270,7 +1383,9 @@ function App() {
       workOrders: [acceptedOrder, ...current.workOrders.filter((order) => order.workOrderNo !== acceptedOrder.workOrderNo)],
     }))
     setSelectedDetail(detail)
-    openServiceWorkflowTab('工单调度')
+    if (options.openDispatch ?? true) {
+      openServiceWorkflowTab('工单调度')
+    }
   }
 
   async function loadDetail(workOrderNo: string, forceApi = false) {
@@ -1342,6 +1457,131 @@ function App() {
     setSelectedIotPoint(buildLocalIotPointDetail(pointCode))
   }
 
+  async function refreshMonitoringAlarms(select?: { pointCode: string; metricCode: string }) {
+    if (source !== 'api') {
+      return
+    }
+
+    const response = await fetch(`${apiBase}/api/operations/monitoring-alarms`)
+    if (!response.ok) {
+      return
+    }
+
+    const board = (await response.json()) as MonitoringAlarmBoard
+    setAlarmBoard(board)
+    const nextAlarm = select
+      ? board.alarms.find((alarm) => alarm.pointCode === select.pointCode && alarm.metricCode === select.metricCode)
+      : board.alarms[0]
+    setSelectedAlarm(nextAlarm ?? board.alarms[0] ?? null)
+  }
+
+  function selectMonitoringAlarm(alarmNo: string) {
+    const alarm = alarmBoard.alarms.find((item) => item.alarmNo === alarmNo)
+    if (alarm) {
+      setSelectedAlarm(alarm)
+      if (alarm.workOrderNo && convertedAlarmDetail?.workOrder.workOrderNo !== alarm.workOrderNo) {
+        setConvertedAlarmDetail(null)
+      }
+    }
+  }
+
+  async function acknowledgeSelectedAlarm() {
+    if (!activeAlarm || activeAlarm.status === 'Closed' || activeAlarm.status === 'ConvertedToWorkOrder') {
+      return
+    }
+
+    if (source === 'api') {
+      const response = await fetch(`${apiBase}/api/operations/monitoring-alarms/${activeAlarm.alarmNo}/acknowledge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ operator: activeAlarm.responsibleTeam, remark: '预警池确认，准备处置闭环' }),
+      })
+      if (response.ok) {
+        applyAlarmUpdate((await response.json()) as MonitoringAlarmEvent)
+        return
+      }
+    }
+
+    applyAlarmUpdate({
+      ...activeAlarm,
+      status: 'Acknowledged',
+      acknowledgedBy: activeAlarm.responsibleTeam,
+      acknowledgedAt: new Date().toISOString(),
+      lastRemark: '预警池确认，准备处置闭环',
+    })
+  }
+
+  async function convertSelectedAlarmToWorkOrder() {
+    if (!activeAlarm || activeAlarm.status === 'Closed') {
+      return
+    }
+
+    if (source === 'api') {
+      const response = await fetch(`${apiBase}/api/operations/monitoring-alarms/${activeAlarm.alarmNo}/convert-to-work-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operator: '预警池调度员',
+          targetTeam: activeAlarm.responsibleTeam,
+          remark: '物联告警确认后转入一站式工单调度',
+        }),
+      })
+      if (response.ok) {
+        const convertedAlarm = (await response.json()) as MonitoringAlarmEvent
+        applyAlarmUpdate(convertedAlarm)
+        const detail = convertedAlarm.workOrderNo
+          ? await loadWorkOrderDetailForAlarm(convertedAlarm.workOrderNo, convertedAlarm)
+          : null
+        if (detail) {
+          setConvertedAlarmDetail(detail)
+          applyGeneratedWorkOrderDetail(detail, { openDispatch: false })
+        }
+        return
+      }
+    }
+
+    const convertedAlarm: MonitoringAlarmEvent = {
+      ...activeAlarm,
+      status: 'ConvertedToWorkOrder',
+      workOrderNo: activeAlarm.workOrderNo ?? buildAlarmWorkOrderNo(activeAlarm),
+      acknowledgedBy: activeAlarm.acknowledgedBy ?? activeAlarm.responsibleTeam,
+      acknowledgedAt: activeAlarm.acknowledgedAt ?? new Date().toISOString(),
+      lastRemark: '物联告警确认后转入一站式工单调度',
+    }
+    const detail = buildLocalAlarmWorkOrderDetail(convertedAlarm)
+    applyAlarmUpdate(convertedAlarm)
+    setConvertedAlarmDetail(detail)
+    applyGeneratedWorkOrderDetail(detail, { openDispatch: false })
+  }
+
+  async function loadWorkOrderDetailForAlarm(workOrderNo: string, alarm: MonitoringAlarmEvent) {
+    const response = await fetch(`${apiBase}/api/operations/work-orders/${workOrderNo}`)
+    if (response.ok) {
+      return (await response.json()) as WorkOrderDetail
+    }
+
+    return buildLocalAlarmWorkOrderDetail(alarm)
+  }
+
+  async function openConvertedAlarmWorkOrder() {
+    const workOrderNo = activeAlarm?.workOrderNo ?? convertedAlarmDetail?.workOrder.workOrderNo
+    if (!workOrderNo) {
+      return
+    }
+
+    const detail =
+      convertedAlarmDetail?.workOrder.workOrderNo === workOrderNo
+        ? convertedAlarmDetail
+        : source === 'api'
+          ? await loadWorkOrderDetailForAlarm(workOrderNo, activeAlarm!)
+          : null
+
+    if (detail) {
+      setSelectedDetail(detail)
+    }
+    openServiceWorkflowTab('工单调度')
+  }
+
   async function ingestCriticalTelemetry() {
     const metricCode = selectedIotPoint.point.metrics[0]?.code ?? 'pressure'
     const value = selectedIotPoint.point.pointCode.includes('ENV') ? 1300 : 0.31
@@ -1360,12 +1600,18 @@ function App() {
         }),
       })
       if (response.ok) {
-        applyTelemetryResult((await response.json()) as TelemetryIngestionResult)
+        const result = (await response.json()) as TelemetryIngestionResult
+        applyTelemetryResult(result)
+        await refreshMonitoringAlarms({ pointCode: result.pointCode, metricCode: result.metricCode })
         return
       }
     }
 
-    applyTelemetryResult(buildLocalTelemetryResult(selectedIotPoint.point, metricCode, value, unit))
+    const localResult = buildLocalTelemetryResult(selectedIotPoint.point, metricCode, value, unit)
+    applyTelemetryResult(localResult)
+    if (localResult.reading) {
+      applyAlarmUpdate(buildLocalAlarmFromTelemetry(selectedIotPoint.point, localResult.reading))
+    }
   }
 
   async function dispatchSelected() {
@@ -1531,6 +1777,26 @@ function App() {
         ...current.lifecycle,
       ],
     }))
+  }
+
+  function applyAlarmUpdate(updatedAlarm: MonitoringAlarmEvent) {
+    setSelectedAlarm(updatedAlarm)
+    setAlarmBoard((current) => {
+      const remaining = current.alarms.filter((alarm) => alarm.alarmNo !== updatedAlarm.alarmNo)
+      return {
+        ...current,
+        alarms: [updatedAlarm, ...remaining].sort((left, right) => {
+          const statusWeight: Record<MonitoringAlarmStatus, number> = {
+            New: 4,
+            Acknowledged: 3,
+            ConvertedToWorkOrder: 2,
+            Closed: 1,
+          }
+          return statusWeight[right.status] - statusWeight[left.status] ||
+            new Date(right.triggeredAt).getTime() - new Date(left.triggeredAt).getTime()
+        }),
+      }
+    })
   }
 
   function applyTelemetryResult(result: TelemetryIngestionResult) {
@@ -1953,7 +2219,7 @@ function App() {
 
               <section>
                 <h2>点位目录</h2>
-                <div className="iot-point-list">
+                <div className="iot-point-list" data-testid="iot-point-list">
                   {iotCatalog.points.map((point) => (
                     <button
                       className={`iot-point-card ${selectedIotPoint.point.pointCode === point.pointCode ? 'selected' : ''}`}
@@ -1969,7 +2235,7 @@ function App() {
                 </div>
               </section>
 
-              <section className="iot-detail-panel">
+              <section className="iot-detail-panel" data-testid="iot-point-detail">
                 <h2>时序字段</h2>
                 <div className="detail-title">
                   <strong>{selectedIotPoint.point.name}</strong>
@@ -1995,7 +2261,7 @@ function App() {
                 </button>
               </section>
 
-              <section className="iot-reading-panel">
+              <section className="iot-reading-panel" data-testid="iot-reading-panel">
                 <h2>阈值与读数</h2>
                 {selectedIotPoint.thresholdRules.map((rule) => (
                   <article key={`${rule.pointCode}-${rule.metricCode}`}>
@@ -2040,18 +2306,131 @@ function App() {
           </section>
 
           <section className="panel alert-panel">
-            <PanelHeader title="环境预警池" meta="点位异常转处置工单" />
-            <div className="alert-list">
-              {dashboard.environmentSignals.map((signal) => (
-                <article className={`alert-item ${signal.status}`} key={signal.signalCode}>
-                  <div>
-                    <strong>{signal.name}</strong>
-                    <span>{signal.location.building} · {signal.location.room}</span>
+            <PanelHeader title="环境预警池" meta="物联告警 / BIM位置 / 转工单 / 调度联动" />
+            <div className="monitoring-alert-workbench">
+              <section>
+                <div className="panel-subhead">
+                  <h2>告警池</h2>
+                  <button type="button" onClick={() => void ingestCriticalTelemetry()}>
+                    模拟异常读数
+                  </button>
+                </div>
+                <div className="monitoring-alarm-list" data-testid="monitoring-alarm-list">
+                  {alarmBoard.alarms.length > 0 ? (
+                    alarmBoard.alarms.map((alarm) => (
+                      <button
+                        aria-label={`告警 ${alarm.title}`}
+                        className={`monitoring-alarm-card ${activeAlarm?.alarmNo === alarm.alarmNo ? 'selected' : ''}`}
+                        key={alarm.alarmNo}
+                        type="button"
+                        onClick={() => selectMonitoringAlarm(alarm.alarmNo)}
+                      >
+                        <strong>{alarm.title}</strong>
+                        <span>{alarm.pointCode} / {alarm.metricCode} / {alarmStatusLabels[alarm.status]}</span>
+                        <small>{alarm.location.building} · {alarm.location.room}</small>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="empty-state">
+                      <strong>暂无实时告警</strong>
+                      <span>可通过物联异常读数生成预警事件。</span>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className="monitoring-alarm-detail" data-testid="monitoring-alarm-detail">
+                <h2>告警详情</h2>
+                {activeAlarm ? (
+                  <>
+                    <div className="detail-title">
+                      <strong>{activeAlarm.title}</strong>
+                      <span>{alarmStatusLabels[activeAlarm.status]}</span>
+                    </div>
+                    <dl className="detail-list">
+                      <div>
+                        <dt>点位</dt>
+                        <dd>{activeAlarm.pointCode} / {activeAlarm.metricCode}</dd>
+                      </div>
+                      <div>
+                        <dt>BIM</dt>
+                        <dd>{activeAlarm.location.bimElementId}</dd>
+                      </div>
+                      <div>
+                        <dt>读数</dt>
+                        <dd>{activeAlarm.value} {activeAlarm.unit} / {telemetryRiskLabels[activeAlarm.riskLevel]}</dd>
+                      </div>
+                      <div>
+                        <dt>规则</dt>
+                        <dd>{activeAlarm.ruleSummary}</dd>
+                      </div>
+                      <div>
+                        <dt>来源</dt>
+                        <dd>{selectedAlarmEvidence.map((evidence) => evidence.featureName).join('、')}</dd>
+                      </div>
+                      <div>
+                        <dt>工单</dt>
+                        <dd>{activeAlarm.workOrderNo ?? '尚未转工单'}</dd>
+                      </div>
+                    </dl>
+                    <div className="action-bar">
+                      <button
+                        type="button"
+                        disabled={activeAlarm.status !== 'New'}
+                        onClick={() => void acknowledgeSelectedAlarm()}
+                      >
+                        确认告警
+                      </button>
+                      <button
+                        type="button"
+                        disabled={activeAlarm.status === 'ConvertedToWorkOrder' || activeAlarm.status === 'Closed'}
+                        onClick={() => void convertSelectedAlarmToWorkOrder()}
+                      >
+                        转处置工单
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!activeAlarm.workOrderNo && !convertedAlarmDetail}
+                        onClick={() => void openConvertedAlarmWorkOrder()}
+                      >
+                        进入调度池
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="empty-state">
+                    <strong>请选择告警</strong>
+                    <span>告警确认、转工单和调度联动会在这里闭环。</span>
                   </div>
-                  <em>{signal.value} {signal.unit}</em>
-                  <span className={`badge ${signal.status}`}>{statusLabels[signal.status]}</span>
-                </article>
-              ))}
+                )}
+              </section>
+
+              <section className="monitoring-alarm-flow">
+                <h2>处置链路</h2>
+                <ol>
+                  <li>物联读数触发阈值</li>
+                  <li>预警池确认责任班组</li>
+                  <li>转入一站式工单调度</li>
+                  <li>派工、接单、完工、验收</li>
+                </ol>
+                {convertedAlarmDetail ? (
+                  <div className="generated-workorder">
+                    <strong>已联动调度池</strong>
+                    <span>{convertedAlarmDetail.workOrder.workOrderNo}</span>
+                    <small>{convertedAlarmDetail.workOrder.title}</small>
+                  </div>
+                ) : null}
+              </section>
+
+              <section className="monitoring-alarm-evidence">
+                <h2>来源依据</h2>
+                <div className="source-tags">
+                  {selectedAlarmEvidence.flatMap((evidence) => evidence.sources).map((sourceName, index) => (
+                    <span key={`${sourceName}-${index}`}>{sourceName}</span>
+                  ))}
+                </div>
+                <p>{selectedAlarmEvidence.map((evidence) => evidence.evidenceSummary).join(' ')}</p>
+              </section>
             </div>
           </section>
 
@@ -2193,7 +2572,9 @@ function buildLocalDetail(order: WorkOrder): WorkOrderDetail {
   return {
     workOrder: order,
     location: order.location,
-    sourceEvidence: order.serviceType.includes('环境')
+    sourceEvidence: order.workOrderNo.startsWith('WO-ALM-')
+      ? [alarmSourceEvidence[1], sourceEvidence[0]]
+      : order.serviceType.includes('环境')
       ? [sourceEvidence[0], sourceEvidence[2]]
       : [sourceEvidence[0]],
     timeline: [
@@ -2311,6 +2692,95 @@ function buildLocalTelemetryResult(
     ruleSummary: reading.ruleSummary,
     reading,
     notFound: false,
+  }
+}
+
+function buildLocalAlarmFromTelemetry(point: IotMonitoringPoint, reading: TelemetryReading): MonitoringAlarmEvent {
+  return {
+    alarmNo: `ALM-${point.pointCode}-${reading.metricCode}-${Date.now()}`,
+    pointCode: point.pointCode,
+    metricCode: reading.metricCode,
+    title: `${point.name}${reading.metricCode}异常`,
+    riskLevel: reading.riskLevel,
+    status: 'New',
+    location: point.location,
+    value: reading.value,
+    unit: reading.unit,
+    triggeredAt: reading.collectedAt,
+    ruleSummary: reading.ruleSummary,
+    responsibleTeam: recommendedTeamForPoint(point),
+    lastRemark: '由前端模拟异常读数生成预警事件',
+  }
+}
+
+function buildLocalAlarmWorkOrderDetail(alarm: MonitoringAlarmEvent): WorkOrderDetail {
+  const createdAt = alarm.triggeredAt
+  const workOrder: WorkOrder = {
+    workOrderNo: alarm.workOrderNo ?? buildAlarmWorkOrderNo(alarm),
+    title: `${alarm.title}处置`,
+    serviceType: '物联告警处置',
+    priority: alarm.riskLevel === 'Critical' ? 'Critical' : 'High',
+    status: 'New',
+    location: alarm.location,
+    responsibleTeam: alarm.responsibleTeam,
+    createdAt,
+    slaDueAt: addHours(createdAt, alarm.riskLevel === 'Critical' ? 1 : 2),
+  }
+
+  return {
+    workOrder,
+    location: alarm.location,
+    sourceEvidence: [alarmSourceEvidence[1], sourceEvidence[0]],
+    timeline: [
+      {
+        occurredAt: createdAt,
+        operator: '预警池调度员',
+        action: '外部来源建单',
+        fromStatus: 'New',
+        toStatus: 'New',
+        remark: alarm.lastRemark ?? alarm.ruleSummary,
+      },
+    ],
+    slaRiskLevel: alarm.riskLevel === 'Critical' ? 'High' : 'Medium',
+    slaMinutesRemaining: alarm.riskLevel === 'Critical' ? 60 : 120,
+    allowedActions: ['Dispatch'],
+  }
+}
+
+function buildAlarmWorkOrderNo(alarm: MonitoringAlarmEvent) {
+  return `WO-ALM-${alarm.alarmNo.replace(/^ALM-?/i, '').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toUpperCase()}`
+}
+
+function recommendedTeamForPoint(point: IotMonitoringPoint) {
+  if (point.category === 'MedicalGas') {
+    return '医气维保人员'
+  }
+
+  if (point.category === 'EnvironmentQuality' || point.pointCode.includes('WASTE')) {
+    return '环境监管班组'
+  }
+
+  if (point.category === 'StrongElectric') {
+    return '电工班工作人员'
+  }
+
+  return '综合维修班'
+}
+
+function addHours(value: string, hours: number) {
+  const date = new Date(value)
+  date.setHours(date.getHours() + hours)
+  return date.toISOString()
+}
+
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = 1200) {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    return await fetch(input, { ...init, signal: controller.signal })
+  } finally {
+    window.clearTimeout(timeout)
   }
 }
 

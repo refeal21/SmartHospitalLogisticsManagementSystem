@@ -244,6 +244,7 @@ h2 {
 .content-grid[data-active-page='dispatch'] > .panel,
 .content-grid[data-active-page='assets'] > .panel,
 .content-grid[data-active-page='iot'] > .panel,
+.content-grid[data-active-page='alerts'] > .panel,
 .content-grid[data-active-page='spatial'] > .panel,
 .content-grid[data-active-page='evidence'] > .panel {
   display: none;
@@ -252,6 +253,8 @@ h2 {
 .content-grid[data-active-page='dispatch'] > .dispatch-panel,
 .content-grid[data-active-page='assets'] > .asset-maintenance-panel,
 .content-grid[data-active-page='iot'] > .iot-panel,
+.content-grid[data-active-page='alerts'] > .alert-panel,
+.content-grid[data-active-page='alerts'] > .team-panel,
 .content-grid[data-active-page='spatial'] > .spatial-panel,
 .content-grid[data-active-page='spatial'] > .alert-panel,
 .content-grid[data-active-page='spatial'] > .team-panel,
@@ -272,6 +275,7 @@ h2 {
 .dispatch-panel,
 .asset-maintenance-panel,
 .iot-panel,
+.alert-panel,
 .module-panel,
 .workflow-panel,
 .evidence-panel,
@@ -749,6 +753,106 @@ button {
   border-left: 3px solid #22a36c;
 }
 
+.monitoring-alert-workbench {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(340px, 1.05fr) minmax(260px, 0.8fr) minmax(260px, 0.8fr);
+  gap: 10px;
+}
+
+.monitoring-alert-workbench h2 {
+  margin-bottom: 8px;
+}
+
+.panel-subhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.monitoring-alarm-list {
+  display: grid;
+  gap: 8px;
+}
+
+.monitoring-alarm-card {
+  width: 100%;
+  display: grid;
+  gap: 5px;
+  text-align: left;
+  background: #ffffff;
+  color: #183752;
+  border-color: #d8e6f0;
+}
+
+.monitoring-alarm-card.selected {
+  border-color: #e55345;
+  box-shadow: 0 0 0 2px rgba(229, 83, 69, 0.11);
+}
+
+.monitoring-alarm-card strong,
+.monitoring-alarm-card span,
+.monitoring-alarm-card small {
+  display: block;
+}
+
+.monitoring-alarm-card span,
+.monitoring-alarm-card small {
+  color: #637a8f;
+  font-size: 12px;
+}
+
+.monitoring-alarm-detail,
+.monitoring-alarm-flow,
+.monitoring-alarm-evidence {
+  border: 1px solid #e0eaf2;
+  border-radius: 5px;
+  padding: 10px;
+  background: #fbfdff;
+}
+
+.monitoring-alarm-flow ol {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 10px;
+  padding-left: 18px;
+  color: #536c82;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.monitoring-alarm-evidence {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.monitoring-alarm-evidence p {
+  color: #5c7489;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.empty-state {
+  border: 1px dashed #b9d2e8;
+  border-radius: 5px;
+  padding: 12px;
+  background: #ffffff;
+  color: #536c82;
+  display: grid;
+  gap: 5px;
+}
+
+.empty-state strong,
+.empty-state span {
+  display: block;
+}
+
+.empty-state span {
+  font-size: 12px;
+}
+
 .dispatch-table {
   display: grid;
   gap: 6px;
@@ -1159,7 +1263,12 @@ button {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .monitoring-alert-workbench {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .dispatch-panel,
+  .alert-panel,
   .module-panel,
   .workflow-panel,
   .evidence-panel,
@@ -1212,7 +1321,8 @@ button {
   .dispatch-workbench,
   .service-stage-grid,
   .asset-maintenance-workbench,
-  .iot-workbench {
+  .iot-workbench,
+  .monitoring-alert-workbench {
     grid-template-columns: 1fr;
   }
 

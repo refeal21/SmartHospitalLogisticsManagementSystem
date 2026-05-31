@@ -260,13 +260,36 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
     await expect(page.getByRole('heading', { name: '时序字段' })).toBeVisible()
     await expect(page.getByRole('heading', { name: '阈值与读数' })).toBeVisible()
 
-    await page.getByRole('button', { name: /MEDGAS-O2-8F/ }).click()
+    await page.getByTestId('iot-point-list').getByRole('button', { name: /MEDGAS-O2-8F/ }).click()
     await expect(page.getByText('BIM-IPD-F8-WARD').first()).toBeVisible()
     await expect(page.getByText('氧气压力 / 医气压力').first()).toBeVisible()
 
-    await page.getByRole('button', { name: '模拟异常读数' }).click()
+    await page.getByTestId('iot-point-detail').getByRole('button', { name: '模拟异常读数' }).click()
     await expect(page.getByText('最新风险：严重')).toBeVisible()
-    await expect(page.getByText('MEDGAS-O2-8F / pressure')).toBeVisible()
+    await expect(page.getByTestId('iot-reading-panel').getByText('MEDGAS-O2-8F / pressure')).toBeVisible()
+  })
+
+  test('环境预警池支持告警确认转工单并联动调度池', async ({ page }) => {
+    await page.goto('/#预警池')
+
+    await expect(page.getByRole('heading', { name: '环境预警池', exact: true })).toBeVisible()
+    await expect(page.getByTestId('monitoring-alarm-list')).toBeVisible()
+    await expect(page.getByTestId('monitoring-alarm-detail')).toBeVisible()
+
+    await page.getByTestId('monitoring-alarm-list').getByRole('button', { name: /氧气压力/ }).click()
+    await expect(page.getByTestId('monitoring-alarm-detail')).toContainText('BIM-IPD-F8-WARD')
+    await expect(page.getByTestId('monitoring-alarm-detail')).toContainText('客户物联告警联动')
+
+    await page.getByRole('button', { name: '确认告警' }).click()
+    await expect(page.getByTestId('monitoring-alarm-detail')).toContainText('已确认')
+
+    await page.getByRole('button', { name: '转处置工单' }).click()
+    await expect(page.getByTestId('monitoring-alarm-detail')).toContainText(/WO-ALM-/)
+
+    await page.getByRole('button', { name: '进入调度池' }).click()
+    await expect(page.getByRole('heading', { name: '工单调度', exact: true })).toBeVisible()
+    await expect(page.getByTestId('work-order-list')).toContainText(/WO-ALM-/)
+    await expect(page.getByTestId('work-order-detail')).toContainText('客户物联告警联动')
   })
 
   test('左侧菜单切换到聚焦业务页面而不是所有模块堆叠', async ({ page }) => {

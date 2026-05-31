@@ -70,6 +70,26 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
     await expect(page.locator('.timeline-panel').getByText('接单', { exact: true }).first()).toBeVisible()
   })
 
+  test('一站式服务菜单呈现五个可办事页面', async ({ page }) => {
+    await page.goto('/#工单调度')
+
+    await expect(page.getByRole('heading', { name: '工单调度', exact: true })).toBeVisible()
+    await expect(page.getByRole('tab', { name: '服务受理' })).toBeVisible()
+    await expect(page.getByRole('tab', { name: '工单调度' })).toBeVisible()
+    await expect(page.getByRole('tab', { name: '任务执行' })).toBeVisible()
+    await expect(page.getByRole('tab', { name: '验收回访' })).toBeVisible()
+    await expect(page.getByRole('tab', { name: '服务评价' })).toBeVisible()
+  })
+
+  test('工单调度页按照业务骨架呈现列表详情操作和时间线', async ({ page }) => {
+    await page.goto('/#工单调度')
+
+    await expect(page.getByTestId('work-order-list')).toBeVisible()
+    await expect(page.getByTestId('work-order-detail')).toBeVisible()
+    await expect(page.getByTestId('work-order-actions')).toBeVisible()
+    await expect(page.getByTestId('work-order-timeline')).toBeVisible()
+  })
+
   test('资产台账与巡检保养支持异常转工单', async ({ page }) => {
     await page.goto('/')
 

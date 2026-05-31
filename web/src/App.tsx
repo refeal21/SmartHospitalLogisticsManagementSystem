@@ -955,6 +955,8 @@ const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = 
   },
 }
 
+const serviceWorkflowTabs = ['服务受理', '工单调度', '任务执行', '验收回访', '服务评价'] as const
+
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5248'
 
 function pageFromMenuItem(item: string): WorkspacePage {
@@ -1476,10 +1478,30 @@ function App() {
         <section className="content-grid" data-active-page={activePage}>
           <section className="panel dispatch-panel">
             <PanelHeader title="工单调度中心" meta="按 SLA / 优先级 / 班组负载派工" />
+            <div className="service-workflow-header">
+              <div>
+                <span>一站式服务流程</span>
+                <h2>工单调度</h2>
+                <p>按 SLA、风险等级、专业班组负载和 BIM 空间位置处理今日后勤工单。</p>
+              </div>
+              <div className="service-workflow-tabs" role="tablist" aria-label="一站式服务流程">
+                {serviceWorkflowTabs.map((tab) => (
+                  <button
+                    aria-selected={tab === '工单调度'}
+                    className={tab === '工单调度' ? 'active' : ''}
+                    key={tab}
+                    role="tab"
+                    type="button"
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="dispatch-workbench">
               <section>
                 <h2>工单池</h2>
-                <div className="work-order-list">
+                <div className="work-order-list" data-testid="work-order-list">
                   {sortedWorkOrders.map((order) => (
                     <button
                       className={`work-order-card ${selectedDetail.workOrder.workOrderNo === order.workOrderNo ? 'selected' : ''}`}
@@ -1504,7 +1526,7 @@ function App() {
                 </button>
               </section>
 
-              <section className="detail-panel">
+              <section className="detail-panel" data-testid="work-order-detail">
                 <h2>工单详情</h2>
                 <div className="detail-title">
                   <strong>{selectedDetail.workOrder.title}</strong>
@@ -1528,7 +1550,7 @@ function App() {
                     <dd>{selectedDetail.sourceEvidence.map((evidence) => evidence.featureName).join('、')}</dd>
                   </div>
                 </dl>
-                <div className="action-bar">
+                <div className="action-bar" data-testid="work-order-actions">
                   <button type="button" onClick={() => void transitionSelected('Accept', '接单', 'Accepted')}>
                     接单处理
                   </button>
@@ -1541,7 +1563,7 @@ function App() {
                 </div>
               </section>
 
-              <section className="timeline-panel">
+              <section className="timeline-panel" data-testid="work-order-timeline">
                 <h2>流转记录</h2>
                 <ol>
                   {selectedDetail.timeline.map((entry) => (

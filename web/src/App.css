@@ -311,6 +311,56 @@ button {
   cursor: pointer;
 }
 
+.service-workflow-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-end;
+  border: 1px solid #d8e6f0;
+  border-radius: 5px;
+  background: #f8fbfe;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.service-workflow-header span {
+  display: block;
+  color: #60778d;
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+
+.service-workflow-header h2 {
+  margin-bottom: 4px;
+  font-size: 18px;
+}
+
+.service-workflow-header p {
+  color: #4f6880;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.service-workflow-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.service-workflow-tabs button {
+  min-width: 78px;
+  background: #ffffff;
+  color: #315f82;
+}
+
+.service-workflow-tabs button.active {
+  background: #176fae;
+  border-color: #176fae;
+  color: #ffffff;
+  font-weight: 800;
+}
+
 .dispatch-workbench {
   display: grid;
   grid-template-columns: minmax(280px, 0.9fr) minmax(220px, 0.7fr) minmax(320px, 1fr) minmax(260px, 0.8fr);

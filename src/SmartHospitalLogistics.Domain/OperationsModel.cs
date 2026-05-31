@@ -741,6 +741,80 @@ public sealed record WaterOperationsUnitDetail(
     IReadOnlyList<MaintenanceTask> MaintenanceTasks,
     IReadOnlyList<FeatureEvidence> SourceEvidence);
 
+public enum EnergyPerformanceAreaStatus
+{
+    Normal,
+    Warning,
+    Critical,
+    Optimizing
+}
+
+public sealed record EnergyPerformanceArea(
+    string AreaCode,
+    string Name,
+    string EnergyType,
+    SpatialLocation Location,
+    string ResponsibleTeam,
+    string PrimaryMeterPointCode,
+    string RelatedSystemCode,
+    decimal BaselineConsumption,
+    decimal CurrentConsumption,
+    decimal CostRate,
+    EnergyPerformanceAreaStatus Status,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
+
+public sealed record EnergyPerformanceKpi(
+    decimal TotalEnergyConsumption,
+    decimal TotalEnergyCost,
+    int AbnormalAreaCount,
+    decimal SavingPotentialPercent,
+    int OpenWorkOrders);
+
+public sealed record EnergySavingRecommendation(
+    string RecommendationCode,
+    string RelatedAreaCode,
+    string Title,
+    Priority Priority,
+    decimal ExpectedSavingRate,
+    string EvidenceSummary,
+    IReadOnlyList<string> SourceTags);
+
+public sealed record OperationPerformanceMetric(
+    string MetricCode,
+    string Name,
+    decimal Value,
+    string Unit,
+    string Benchmark,
+    EnergyPerformanceAreaStatus Status);
+
+public sealed record EnergyTrendPoint(
+    DateTimeOffset OccurredAt,
+    string AreaCode,
+    string MetricCode,
+    decimal Value,
+    string Unit);
+
+public sealed record EnergyPerformanceBoard(
+    DateTimeOffset GeneratedAt,
+    IReadOnlyList<EnergyPerformanceArea> Areas,
+    IReadOnlyList<IotMonitoringPoint> MeterPoints,
+    IReadOnlyList<MonitoringAlarmEvent> ActiveAlarms,
+    IReadOnlyList<WorkOrder> OpenWorkOrders,
+    IReadOnlyList<EnergySavingRecommendation> SavingRecommendations,
+    IReadOnlyList<OperationPerformanceMetric> OperationPerformance,
+    IReadOnlyList<FeatureEvidence> SourceEvidence,
+    EnergyPerformanceKpi Kpis);
+
+public sealed record EnergyPerformanceAreaDetail(
+    EnergyPerformanceArea Area,
+    IReadOnlyList<IotMonitoringPoint> RelatedMeterPoints,
+    IReadOnlyList<MonitoringAlarmEvent> ActiveAlarms,
+    IReadOnlyList<WorkOrder> OpenWorkOrders,
+    IReadOnlyList<EnergyTrendPoint> Trend,
+    IReadOnlyList<EnergySavingRecommendation> SavingRecommendations,
+    IReadOnlyList<OperationPerformanceMetric> OperationPerformance,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
+
 public sealed record FeatureEvidence(
     string FeatureName,
     IReadOnlyList<string> Sources,

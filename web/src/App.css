@@ -249,6 +249,7 @@ h2 {
 .content-grid[data-active-page='powerDistribution'] > .panel,
 .content-grid[data-active-page='hvac'] > .panel,
 .content-grid[data-active-page='waterOperations'] > .panel,
+.content-grid[data-active-page='energyPerformance'] > .panel,
 .content-grid[data-active-page='spatial'] > .panel,
 .content-grid[data-active-page='evidence'] > .panel {
   display: none;
@@ -263,6 +264,7 @@ h2 {
 .content-grid[data-active-page='powerDistribution'] > .power-distribution-panel,
 .content-grid[data-active-page='hvac'] > .hvac-panel,
 .content-grid[data-active-page='waterOperations'] > .water-operations-panel,
+.content-grid[data-active-page='energyPerformance'] > .energy-performance-panel,
 .content-grid[data-active-page='spatial'] > .spatial-panel,
 .content-grid[data-active-page='spatial'] > .alert-panel,
 .content-grid[data-active-page='spatial'] > .team-panel,
@@ -287,6 +289,7 @@ h2 {
 .power-distribution-panel,
 .hvac-panel,
 .water-operations-panel,
+.energy-performance-panel,
 .spatial-panel,
 .alert-panel,
 .module-panel,
@@ -1434,6 +1437,7 @@ button {
   .power-distribution-panel,
   .hvac-panel,
   .water-operations-panel,
+  .energy-performance-panel,
   .spatial-panel,
   .alert-panel,
   .module-panel,

@@ -603,6 +603,81 @@ type WaterOperationsUnitDetail = {
   sourceEvidence: FeatureEvidence[]
 }
 
+type EnergyPerformanceAreaStatus = 'Normal' | 'Warning' | 'Critical' | 'Optimizing'
+
+type EnergyPerformanceArea = {
+  areaCode: string
+  name: string
+  energyType: string
+  location: SpatialLocation
+  responsibleTeam: string
+  primaryMeterPointCode: string
+  relatedSystemCode: string
+  baselineConsumption: number
+  currentConsumption: number
+  costRate: number
+  status: EnergyPerformanceAreaStatus
+  sourceEvidence: FeatureEvidence[]
+}
+
+type EnergyPerformanceKpi = {
+  totalEnergyConsumption: number
+  totalEnergyCost: number
+  abnormalAreaCount: number
+  savingPotentialPercent: number
+  openWorkOrders: number
+}
+
+type EnergySavingRecommendation = {
+  recommendationCode: string
+  relatedAreaCode: string
+  title: string
+  priority: Priority
+  expectedSavingRate: number
+  evidenceSummary: string
+  sourceTags: string[]
+}
+
+type OperationPerformanceMetric = {
+  metricCode: string
+  name: string
+  value: number
+  unit: string
+  benchmark: string
+  status: EnergyPerformanceAreaStatus
+}
+
+type EnergyTrendPoint = {
+  occurredAt: string
+  areaCode: string
+  metricCode: string
+  value: number
+  unit: string
+}
+
+type EnergyPerformanceBoard = {
+  generatedAt: string
+  areas: EnergyPerformanceArea[]
+  meterPoints: IotMonitoringPoint[]
+  activeAlarms: MonitoringAlarmEvent[]
+  openWorkOrders: WorkOrder[]
+  savingRecommendations: EnergySavingRecommendation[]
+  operationPerformance: OperationPerformanceMetric[]
+  sourceEvidence: FeatureEvidence[]
+  kpis: EnergyPerformanceKpi
+}
+
+type EnergyPerformanceAreaDetail = {
+  area: EnergyPerformanceArea
+  relatedMeterPoints: IotMonitoringPoint[]
+  activeAlarms: MonitoringAlarmEvent[]
+  openWorkOrders: WorkOrder[]
+  trend: EnergyTrendPoint[]
+  savingRecommendations: EnergySavingRecommendation[]
+  operationPerformance: OperationPerformanceMetric[]
+  sourceEvidence: FeatureEvidence[]
+}
+
 type SpatialPointKind = 'workOrder' | 'asset' | 'alarm' | 'iot'
 type SpatialPointTone = 'workorder' | 'asset' | 'alert' | 'normal'
 
@@ -639,6 +714,7 @@ type WorkspacePage =
   | 'powerDistribution'
   | 'hvac'
   | 'waterOperations'
+  | 'energyPerformance'
   | 'spatial'
   | 'evidence'
 
@@ -1569,6 +1645,120 @@ const localWaterOperationsBoard: WaterOperationsBoard = {
   },
 }
 
+const energyPerformanceSourceEvidence: FeatureEvidence[] = [
+  {
+    featureName: '综合能耗监管',
+    sources: ['中科医信', 'PPT'],
+    evidenceSummary: '中科医信竞品包含用能总览、实时监控、告警、用能分析、报表、成本和配置；PPT 将能耗成本管理纳入综合管理闭环。',
+  },
+  {
+    featureName: '客户专项能耗映射',
+    sources: ['北建院', '中科医信', 'PPT'],
+    evidenceSummary: '北建院强电、暖通、给排水点位包含电度、能耗、压力、流量和水质字段，必须与专项告警、工单和运行绩效联动。',
+  },
+]
+
+const localEnergyRecommendations: EnergySavingRecommendation[] = [
+  {
+    recommendationCode: 'REC-ENE-HVAC-B1',
+    relatedAreaCode: 'ENE-HVAC-B1',
+    title: '冷站夜间节能策略复核',
+    priority: 'High',
+    expectedSavingRate: 11.3,
+    evidenceSummary: '冷站当前用能高于基线，建议联动暖通巡检和冷冻泵运行策略复核。',
+    sourceTags: ['中科医信', 'PPT'],
+  },
+  {
+    recommendationCode: 'REC-ENE-POWER-B1',
+    relatedAreaCode: 'ENE-POWER-B1',
+    title: '变配电室异常用能复核',
+    priority: 'High',
+    expectedSavingRate: 8.4,
+    evidenceSummary: '低压进线负荷和电压异常需联动强电专项处置，复核异常成本。',
+    sourceTags: ['中科医信', 'PPT'],
+  },
+]
+
+const localEnergyPerformanceBoard: EnergyPerformanceBoard = {
+  generatedAt: '2026-05-30T09:30:00+08:00',
+  areas: [
+    {
+      areaCode: 'ENE-POWER-B1',
+      name: 'B1 变配电室电力能耗',
+      energyType: '电',
+      location: locations.power,
+      responsibleTeam: '电工班工作人员',
+      primaryMeterPointCode: 'PWR-LV-B1-IN-01',
+      relatedSystemCode: 'PWR-CIRCUIT-B1-LV-IN',
+      baselineConsumption: 980,
+      currentConsumption: 1088,
+      costRate: 0.92,
+      status: 'Warning',
+      sourceEvidence: energyPerformanceSourceEvidence,
+    },
+    {
+      areaCode: 'ENE-HVAC-B1',
+      name: 'B1 冷站冷量与泵组能耗',
+      energyType: '冷量',
+      location: locations.energy,
+      responsibleTeam: '暖通班工作人员',
+      primaryMeterPointCode: 'HVAC-CHW-B1-02',
+      relatedSystemCode: 'HVAC-LOOP-B1-CHW',
+      baselineConsumption: 640,
+      currentConsumption: 712,
+      costRate: 0.86,
+      status: 'Optimizing',
+      sourceEvidence: energyPerformanceSourceEvidence,
+    },
+    {
+      areaCode: 'ENE-WATER-B1',
+      name: 'B1 给水与污水运行能耗',
+      energyType: '水',
+      location: locations.pump,
+      responsibleTeam: '给排水班工作人员',
+      primaryMeterPointCode: 'WATER-PUMP-B1-01',
+      relatedSystemCode: 'WATER-SYS-B1-PUMP',
+      baselineConsumption: 220,
+      currentConsumption: 238,
+      costRate: 0.38,
+      status: 'Warning',
+      sourceEvidence: energyPerformanceSourceEvidence,
+    },
+  ],
+  meterPoints: localIotCatalog.points.filter((point) =>
+    ['PWR-LV-B1-IN-01', 'HVAC-CHW-B1-02', 'WATER-PUMP-B1-01'].includes(point.pointCode),
+  ),
+  activeAlarms: [],
+  openWorkOrders: [],
+  savingRecommendations: localEnergyRecommendations,
+  operationPerformance: [
+    {
+      metricCode: 'energy-saving-potential',
+      name: '节能潜力',
+      value: 10.2,
+      unit: '%',
+      benchmark: '控制在 5% 以内',
+      status: 'Warning',
+    },
+    {
+      metricCode: 'sla-energy-response',
+      name: '能耗异常响应',
+      value: 92,
+      unit: '%',
+      benchmark: '目标 >= 90%',
+      status: 'Normal',
+    },
+  ],
+  sourceEvidence: energyPerformanceSourceEvidence,
+  kpis: {
+    totalEnergyConsumption: 2038,
+    totalEnergyCost: 1703.56,
+    abnormalAreaCount: 3,
+    savingPotentialPercent: 10.2,
+    openWorkOrders: 0,
+  },
+}
+
 const statusLabels: Record<WorkOrderStatus | FacilityStatus | SignalStatus, string> = {
   New: '新建',
   Dispatched: '已派工',
@@ -1666,6 +1856,13 @@ const waterOperationsStatusLabels: Record<WaterOperationsUnitStatus, string> = {
   Maintenance: '保养中',
 }
 
+const energyPerformanceStatusLabels: Record<EnergyPerformanceAreaStatus, string> = {
+  Normal: '正常',
+  Warning: '预警',
+  Critical: '严重',
+  Optimizing: '优化中',
+}
+
 const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = {
   overview: {
     title: '后勤运营总览',
@@ -1703,6 +1900,10 @@ const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = 
     title: '给排水/污水站专项工作台',
     summary: '聚合给水泵房、污水处理站、压力水质点位、资产巡检、告警和工单调度，让水务运行形成闭环。',
   },
+  energyPerformance: {
+    title: '能耗与运行绩效工作台',
+    summary: '把强电、暖通、给排水/污水站的点位、告警、工单和巡检实绩聚合为可追溯的能耗成本和运行绩效。',
+  },
   spatial: {
     title: 'BIM 空间运维工作台',
     summary: '聚焦空间定位：设备、告警、工单和班组负载在同一空间语境里联动。',
@@ -1721,6 +1922,17 @@ const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5248'
 
 function pageFromMenuItem(item: string): WorkspacePage {
   const normalized = item.toLowerCase()
+  if (
+    normalized.includes('energy-performance') ||
+    normalized.includes('energy') ||
+    item.includes('能耗') ||
+    item.includes('能源') ||
+    item.includes('绩效') ||
+    item.includes('成本')
+  ) {
+    return 'energyPerformance'
+  }
+
   if (
     normalized.includes('water-operations') ||
     normalized.includes('water') ||
@@ -1858,6 +2070,10 @@ function App() {
     buildLocalWaterOperationsDetail('WATER-SYS-B1-PUMP'),
   )
   const [convertedWaterOperationsDetail, setConvertedWaterOperationsDetail] = useState<WorkOrderDetail | null>(null)
+  const [energyPerformanceBoard, setEnergyPerformanceBoard] = useState(localEnergyPerformanceBoard)
+  const [energyPerformanceAreaDetail, setEnergyPerformanceAreaDetail] = useState(() =>
+    buildLocalEnergyPerformanceDetail('ENE-POWER-B1'),
+  )
   const [iotCatalog, setIotCatalog] = useState(localIotCatalog)
   const [selectedIotPoint, setSelectedIotPoint] = useState(() => buildLocalIotPointDetail('MEDGAS-O2-8F'))
   const [lastTelemetryResult, setLastTelemetryResult] = useState<TelemetryIngestionResult | null>(null)
@@ -1901,6 +2117,7 @@ function App() {
       fetch(`${apiBase}/api/operations/power-distribution-board`, { signal: controller.signal }),
       fetch(`${apiBase}/api/operations/hvac-board`, { signal: controller.signal }),
       fetch(`${apiBase}/api/operations/water-operations-board`, { signal: controller.signal }),
+      fetch(`${apiBase}/api/operations/energy-performance-board`, { signal: controller.signal }),
     ])
       .then(async ([
         dashboardResponse,
@@ -1913,6 +2130,7 @@ function App() {
         powerDistributionBoardResponse,
         hvacBoardResponse,
         waterOperationsBoardResponse,
+        energyPerformanceBoardResponse,
       ]) => {
         if (
           !dashboardResponse.ok ||
@@ -1924,7 +2142,8 @@ function App() {
           !medicalGasBoardResponse.ok ||
           !powerDistributionBoardResponse.ok ||
           !hvacBoardResponse.ok ||
-          !waterOperationsBoardResponse.ok
+          !waterOperationsBoardResponse.ok ||
+          !energyPerformanceBoardResponse.ok
         ) {
           throw new Error('Logistics API unavailable')
         }
@@ -1937,6 +2156,7 @@ function App() {
         const fetchedPowerDistributionBoard = (await powerDistributionBoardResponse.json()) as PowerDistributionBoard
         const fetchedHvacBoard = (await hvacBoardResponse.json()) as HvacBoard
         const fetchedWaterOperationsBoard = (await waterOperationsBoardResponse.json()) as WaterOperationsBoard
+        const fetchedEnergyPerformanceBoard = (await energyPerformanceBoardResponse.json()) as EnergyPerformanceBoard
         setDashboard((await dashboardResponse.json()) as OperationsDashboard)
         setBlueprint((await blueprintResponse.json()) as LogisticsBlueprint)
         setDispatchBoard(board)
@@ -1947,6 +2167,7 @@ function App() {
         setPowerDistributionBoard(fetchedPowerDistributionBoard)
         setHvacBoard(fetchedHvacBoard)
         setWaterOperationsBoard(fetchedWaterOperationsBoard)
+        setEnergyPerformanceBoard(fetchedEnergyPerformanceBoard)
         setSelectedAlarm(fetchedAlarmBoard.alarms[0] ?? null)
         setSource('api')
 
@@ -2020,6 +2241,16 @@ function App() {
           })
           if (unitResponse.ok) {
             setWaterOperationsUnitDetail((await unitResponse.json()) as WaterOperationsUnitDetail)
+          }
+        }
+
+        const firstEnergyAreaCode = fetchedEnergyPerformanceBoard.areas[0]?.areaCode
+        if (firstEnergyAreaCode) {
+          const energyResponse = await fetch(`${apiBase}/api/operations/energy-performance-areas/${firstEnergyAreaCode}`, {
+            signal: controller.signal,
+          })
+          if (energyResponse.ok) {
+            setEnergyPerformanceAreaDetail((await energyResponse.json()) as EnergyPerformanceAreaDetail)
           }
         }
       })
@@ -2897,6 +3128,96 @@ function App() {
       setSelectedDetail(detail)
     }
     openServiceWorkflowTab(serviceWorkflowTabs[1])
+  }
+
+  async function loadEnergyPerformanceAreaDetail(areaCode: string, forceApi = false) {
+    if (source === 'api' || forceApi) {
+      const response = await fetch(`${apiBase}/api/operations/energy-performance-areas/${areaCode}`)
+      if (response.ok) {
+        setEnergyPerformanceAreaDetail((await response.json()) as EnergyPerformanceAreaDetail)
+        return
+      }
+    }
+
+    setEnergyPerformanceAreaDetail(buildLocalEnergyPerformanceDetail(areaCode))
+  }
+
+  async function refreshEnergyPerformanceBoard(areaCode = energyPerformanceAreaDetail.area.areaCode) {
+    if (source !== 'api') {
+      return
+    }
+
+    const boardResponse = await fetch(`${apiBase}/api/operations/energy-performance-board`)
+    if (boardResponse.ok) {
+      setEnergyPerformanceBoard((await boardResponse.json()) as EnergyPerformanceBoard)
+    }
+
+    const detailResponse = await fetch(`${apiBase}/api/operations/energy-performance-areas/${areaCode}`)
+    if (detailResponse.ok) {
+      setEnergyPerformanceAreaDetail((await detailResponse.json()) as EnergyPerformanceAreaDetail)
+    }
+  }
+
+  function applyEnergyPerformanceAlarm(alarm: MonitoringAlarmEvent) {
+    setEnergyPerformanceBoard((current) => {
+      const alarms = [alarm, ...current.activeAlarms.filter((item) => item.alarmNo !== alarm.alarmNo)]
+      return {
+        ...current,
+        activeAlarms: alarms,
+        areas: current.areas.map((area) =>
+          area.primaryMeterPointCode === alarm.pointCode ? { ...area, status: 'Critical' } : area,
+        ),
+        kpis: {
+          ...current.kpis,
+          abnormalAreaCount: Math.max(current.kpis.abnormalAreaCount, 1),
+        },
+      }
+    })
+    setEnergyPerformanceAreaDetail((current) => ({
+      ...current,
+      area: { ...current.area, status: 'Critical' },
+      activeAlarms: [alarm, ...current.activeAlarms.filter((item) => item.alarmNo !== alarm.alarmNo)],
+    }))
+  }
+
+  async function ingestEnergyPerformanceAnomaly() {
+    const point =
+      iotCatalog.points.find((item) => item.pointCode === 'PWR-LV-B1-IN-01') ??
+      localIotCatalog.points.find((item) => item.pointCode === 'PWR-LV-B1-IN-01')!
+
+    if (source === 'api') {
+      const response = await fetch(`${apiBase}/api/operations/iot-readings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pointCode: point.pointCode,
+          metricCode: 'voltage',
+          value: 260,
+          unit: 'V',
+          collectedAt: new Date().toISOString(),
+        }),
+      })
+      if (response.ok) {
+        const result = (await response.json()) as TelemetryIngestionResult
+        applyTelemetryResult(result)
+        await refreshMonitoringAlarms({ pointCode: result.pointCode, metricCode: result.metricCode })
+        await refreshEnergyPerformanceBoard('ENE-POWER-B1')
+        return
+      }
+    }
+
+    const result = buildLocalTelemetryResult(point, 'voltage', 260, 'V')
+    applyTelemetryResult(result)
+    if (result.reading) {
+      const alarm = buildLocalAlarmFromTelemetry(point, result.reading)
+      applyAlarmUpdate(alarm)
+      applyEnergyPerformanceAlarm(alarm)
+    }
+  }
+
+  function openPowerDistributionFromEnergy() {
+    void loadPowerDistributionCircuitDetail('PWR-CIRCUIT-B1-LV-IN')
+    openWorkspacePage('供配电专项')
   }
 
   function applyMedicalGasAlarm(alarm: MonitoringAlarmEvent) {
@@ -4420,6 +4741,121 @@ function App() {
             </div>
           </section>
 
+          <section className="panel energy-performance-panel">
+            <PanelHeader title="能耗与运行绩效" meta="能耗 / 成本 / 告警 / 工单 / 节能建议 / KPI" />
+            <div className="medical-gas-workbench" data-testid="energy-performance-board">
+              <section className="medical-gas-summary">
+                <h2>绩效总览</h2>
+                <div className="medical-gas-kpis">
+                  <article>
+                    <span>总能耗</span>
+                    <strong>{energyPerformanceBoard.kpis.totalEnergyConsumption.toFixed(0)}</strong>
+                  </article>
+                  <article>
+                    <span>异常区域</span>
+                    <strong>{energyPerformanceBoard.kpis.abnormalAreaCount}</strong>
+                  </article>
+                  <article>
+                    <span>异常成本</span>
+                    <strong>{energyPerformanceBoard.kpis.totalEnergyCost.toFixed(0)}</strong>
+                  </article>
+                  <article>
+                    <span>节能潜力</span>
+                    <strong>{energyPerformanceBoard.kpis.savingPotentialPercent}%</strong>
+                  </article>
+                </div>
+                {energyPerformanceBoard.areas.map((area) => (
+                  <button
+                    className={`medical-gas-zone-card ${energyPerformanceAreaDetail.area.areaCode === area.areaCode ? 'selected' : ''}`}
+                    key={area.areaCode}
+                    type="button"
+                    onClick={() => void loadEnergyPerformanceAreaDetail(area.areaCode)}
+                  >
+                    <strong>{area.name}</strong>
+                    <span>{area.areaCode} / {area.primaryMeterPointCode} / {energyPerformanceStatusLabels[area.status]}</span>
+                    <small>{area.location.building} / {area.location.room} / {area.location.bimElementId}</small>
+                  </button>
+                ))}
+              </section>
+
+              <section className="medical-gas-zone-detail">
+                <h2>区域详情</h2>
+                <div className="detail-title">
+                  <strong>{energyPerformanceAreaDetail.area.name}</strong>
+                  <span>{energyPerformanceStatusLabels[energyPerformanceAreaDetail.area.status]}</span>
+                </div>
+                <dl className="detail-list">
+                  <div>
+                    <dt>BIM</dt>
+                    <dd>{energyPerformanceAreaDetail.area.location.bimElementId}</dd>
+                  </div>
+                  <div>
+                    <dt>点位</dt>
+                    <dd>{energyPerformanceAreaDetail.area.primaryMeterPointCode}</dd>
+                  </div>
+                  <div>
+                    <dt>成本</dt>
+                    <dd>{(energyPerformanceAreaDetail.area.currentConsumption * energyPerformanceAreaDetail.area.costRate).toFixed(1)}</dd>
+                  </div>
+                  <div>
+                    <dt>来源</dt>
+                    <dd>{energyPerformanceAreaDetail.sourceEvidence.flatMap((item) => item.sources).join('、')}</dd>
+                  </div>
+                </dl>
+                <p>
+                  基线 {energyPerformanceAreaDetail.area.baselineConsumption} / 当前 {energyPerformanceAreaDetail.area.currentConsumption}，
+                  关联 {energyPerformanceAreaDetail.area.relatedSystemCode}
+                </p>
+              </section>
+
+              <section className="medical-gas-linked">
+                <h2>绩效指标</h2>
+                {energyPerformanceAreaDetail.operationPerformance.map((metric) => (
+                  <article key={metric.metricCode}>
+                    <strong>{metric.name}</strong>
+                    <span>{metric.value}{metric.unit} / {energyPerformanceStatusLabels[metric.status]}</span>
+                    <small>{metric.benchmark}</small>
+                  </article>
+                ))}
+                {energyPerformanceAreaDetail.trend.map((point) => (
+                  <article key={`${point.areaCode}-${point.occurredAt}`}>
+                    <strong>{point.metricCode}</strong>
+                    <span>{point.value} {point.unit}</span>
+                    <small>{point.areaCode}</small>
+                  </article>
+                ))}
+              </section>
+
+              <section className="medical-gas-actions">
+                <h2>节能建议与联动</h2>
+                <div className="action-bar">
+                  <button data-testid="energy-performance-ingest-anomaly" type="button" onClick={() => void ingestEnergyPerformanceAnomaly()}>
+                    模拟异常用能
+                  </button>
+                  <button data-testid="energy-performance-open-power" type="button" onClick={openPowerDistributionFromEnergy}>
+                    打开供配电专项
+                  </button>
+                </div>
+                <div className="medical-gas-flow-list">
+                  {energyPerformanceAreaDetail.savingRecommendations.map((item) => (
+                    <article key={item.recommendationCode}>
+                      <strong>{item.title}</strong>
+                      <span>{item.relatedAreaCode} / {priorityLabels[item.priority]} / 节能建议 {item.expectedSavingRate}%</span>
+                      <small>{item.evidenceSummary}</small>
+                    </article>
+                  ))}
+                  {energyPerformanceAreaDetail.activeAlarms.map((alarm) => (
+                    <article key={alarm.alarmNo}>
+                      <strong>{alarm.alarmNo}</strong>
+                      <span>{alarm.pointCode} / {telemetryRiskLabels[alarm.riskLevel]}</span>
+                      <small>{alarm.workOrderNo ?? '能耗异常尚未转工单'}</small>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </section>
+
           <section className="panel spatial-panel">
             <PanelHeader title="BIM 空间业务定位" meta="设备 / 告警 / 工单同图层" />
             {activePage === 'spatial' ? (
@@ -4981,6 +5417,40 @@ function buildLocalWaterOperationsDetail(unitCode: string): WaterOperationsUnitD
     openWorkOrders: localWaterOperationsBoard.openWorkOrders.filter((order) => order.location.bimElementId === unit.location.bimElementId),
     maintenanceTasks: localWaterOperationsBoard.dueMaintenanceTasks.filter((task) => task.assetCode === unit.assetCode),
     sourceEvidence: waterOperationsSourceEvidence,
+  }
+}
+
+function buildLocalEnergyPerformanceDetail(areaCode: string): EnergyPerformanceAreaDetail {
+  const area =
+    localEnergyPerformanceBoard.areas.find((item) => item.areaCode === areaCode) ??
+    localEnergyPerformanceBoard.areas[0]
+
+  return {
+    area,
+    relatedMeterPoints: localEnergyPerformanceBoard.meterPoints.filter((point) => point.pointCode === area.primaryMeterPointCode),
+    activeAlarms: localEnergyPerformanceBoard.activeAlarms.filter((alarm) => alarm.pointCode === area.primaryMeterPointCode),
+    openWorkOrders: localEnergyPerformanceBoard.openWorkOrders.filter((order) => order.location.bimElementId === area.location.bimElementId),
+    trend: [
+      {
+        occurredAt: '2026-05-30T06:30:00+08:00',
+        areaCode: area.areaCode,
+        metricCode: area.energyType === '冷量' ? 'energy' : 'consumption',
+        value: Math.round(area.baselineConsumption * 0.92),
+        unit: 'kWh',
+      },
+      {
+        occurredAt: '2026-05-30T08:30:00+08:00',
+        areaCode: area.areaCode,
+        metricCode: area.energyType === '冷量' ? 'energy' : 'consumption',
+        value: area.currentConsumption,
+        unit: 'kWh',
+      },
+    ],
+    savingRecommendations: localEnergyPerformanceBoard.savingRecommendations.filter(
+      (item) => item.relatedAreaCode === area.areaCode,
+    ),
+    operationPerformance: localEnergyPerformanceBoard.operationPerformance,
+    sourceEvidence: energyPerformanceSourceEvidence,
   }
 }
 

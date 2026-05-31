@@ -192,6 +192,15 @@ api.MapGet("/water-operations-units/{unitCode}", (string unitCode, IWaterOperati
         : Results.NotFound(new { error = $"Water operations unit {unitCode} was not found." }))
     .WithName("GetWaterOperationsUnitDetail");
 
+api.MapGet("/energy-performance-board", (IEnergyPerformanceService service) => service.GetBoard())
+    .WithName("GetEnergyPerformanceBoard");
+
+api.MapGet("/energy-performance-areas/{areaCode}", (string areaCode, IEnergyPerformanceService service) =>
+    service.GetAreaDetail(areaCode) is { } detail
+        ? Results.Ok(detail)
+        : Results.NotFound(new { error = $"Energy performance area {areaCode} was not found." }))
+    .WithName("GetEnergyPerformanceAreaDetail");
+
 app.Run();
 
 static IResult ToHttpResult(DispatchOperationResult result)

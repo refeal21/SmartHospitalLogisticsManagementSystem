@@ -216,6 +216,7 @@ h2 {
 }
 
 .dispatch-panel,
+.asset-maintenance-panel,
 .module-panel,
 .workflow-panel,
 .evidence-panel,
@@ -389,6 +390,131 @@ button {
 
 .timeline-panel span,
 .timeline-panel small {
+  color: #647b90;
+  font-size: 12px;
+}
+
+.asset-maintenance-workbench {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(300px, 1fr) minmax(320px, 1fr) minmax(260px, 0.8fr);
+  gap: 10px;
+}
+
+.asset-maintenance-workbench h2 {
+  margin-bottom: 8px;
+}
+
+.asset-list {
+  display: grid;
+  gap: 8px;
+}
+
+.asset-card {
+  width: 100%;
+  display: grid;
+  gap: 5px;
+  text-align: left;
+  background: #ffffff;
+  color: #183752;
+  border-color: #d8e6f0;
+}
+
+.asset-card.selected {
+  border-color: #1f74b7;
+  box-shadow: 0 0 0 2px rgba(31, 116, 183, 0.1);
+}
+
+.asset-card strong,
+.asset-card span,
+.asset-card small {
+  display: block;
+}
+
+.asset-card span,
+.asset-card small {
+  color: #637a8f;
+  font-size: 12px;
+}
+
+.asset-detail-panel,
+.maintenance-task-panel,
+.asset-lifecycle-panel {
+  border: 1px solid #e0eaf2;
+  border-radius: 5px;
+  padding: 10px;
+  background: #fbfdff;
+}
+
+.maintenance-task-panel {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.maintenance-task-card {
+  border: 1px solid #dfeaf2;
+  border-radius: 5px;
+  padding: 9px;
+  display: grid;
+  gap: 8px;
+  background: #ffffff;
+}
+
+.maintenance-task-card strong,
+.maintenance-task-card span,
+.maintenance-task-card em,
+.maintenance-task-card small {
+  display: block;
+}
+
+.maintenance-task-card span,
+.maintenance-task-card em {
+  color: #637a8f;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.maintenance-task-card button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.generated-workorder {
+  border-left: 3px solid #22a36c;
+  background: #eefaf4;
+  padding: 8px 10px;
+  display: grid;
+  gap: 3px;
+}
+
+.generated-workorder span,
+.generated-workorder small {
+  color: #3d705a;
+  font-size: 12px;
+}
+
+.asset-lifecycle-panel ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.asset-lifecycle-panel li {
+  border-left: 3px solid #22a9d6;
+  background: #ffffff;
+  padding: 7px 8px;
+}
+
+.asset-lifecycle-panel strong,
+.asset-lifecycle-panel span,
+.asset-lifecycle-panel small {
+  display: block;
+}
+
+.asset-lifecycle-panel span,
+.asset-lifecycle-panel small {
   color: #647b90;
   font-size: 12px;
 }
@@ -791,6 +917,10 @@ button {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .asset-maintenance-workbench {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .dispatch-panel,
   .module-panel,
   .workflow-panel,
@@ -840,7 +970,8 @@ button {
 
   .dispatch-row,
   .alert-item,
-  .dispatch-workbench {
+  .dispatch-workbench,
+  .asset-maintenance-workbench {
     grid-template-columns: 1fr;
   }
 

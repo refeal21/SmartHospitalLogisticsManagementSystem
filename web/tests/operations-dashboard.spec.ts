@@ -70,6 +70,26 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
     await expect(page.locator('.timeline-panel').getByText('接单', { exact: true }).first()).toBeVisible()
   })
 
+  test('资产台账与巡检保养支持异常转工单', async ({ page }) => {
+    await page.goto('/')
+
+    await expect(page.getByRole('heading', { name: '资产台账与巡检保养' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '设备设施台账' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '巡检任务' })).toBeVisible()
+
+    await page.getByRole('button', { name: /MEDGAS-IPD-8F/ }).click()
+    await expect(page.getByText('BIM-IPD-F8-WARD').first()).toBeVisible()
+    await expect(page.getByText('住院 8F 医用气体分区阀箱周巡检').first()).toBeVisible()
+
+    const convertButton = page.getByRole('button', { name: '异常完成并转工单' }).first()
+    if (await convertButton.isEnabled()) {
+      await convertButton.click()
+    }
+
+    await expect(page.getByText('已转工单').first()).toBeVisible()
+    await expect(page.getByText(/WO-MT-20260530-0002|WO-MT-20260530-0001/).first()).toBeVisible()
+  })
+
   test('移动端不出现横向溢出并保留核心办事入口', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/')

@@ -76,6 +76,25 @@ api.MapPost("/work-orders/{workOrderNo}/transition", (
 api.MapGet("/assets/risk", (IOperationsDashboardService service) => service.GetRiskAssets())
     .WithName("GetRiskAssets");
 
+api.MapGet("/asset-maintenance-board", (IAssetMaintenanceService service) => service.GetMaintenanceBoard())
+    .WithName("GetAssetMaintenanceBoard");
+
+api.MapGet("/assets/{assetCode}/maintenance", (string assetCode, IAssetMaintenanceService service) =>
+    service.GetAssetMaintenanceDetail(assetCode) is { } detail
+        ? Results.Ok(detail)
+        : Results.NotFound(new { error = $"Asset {assetCode} was not found." }))
+    .WithName("GetAssetMaintenanceDetail");
+
+api.MapPost("/maintenance-tasks/{taskNo}/complete", (
+        string taskNo,
+        CompleteMaintenanceTaskCommand command,
+        IAssetMaintenanceService service) =>
+    {
+        var result = service.CompleteTask(taskNo, command);
+        return ToMaintenanceHttpResult(result);
+    })
+    .WithName("CompleteMaintenanceTask");
+
 app.Run();
 
 static IResult ToHttpResult(DispatchOperationResult result)
@@ -83,6 +102,18 @@ static IResult ToHttpResult(DispatchOperationResult result)
     if (result.Succeeded && result.Detail is not null)
     {
         return Results.Ok(result.Detail);
+    }
+
+    return result.NotFound
+        ? Results.NotFound(new { error = result.ErrorMessage })
+        : Results.BadRequest(new { error = result.ErrorMessage });
+}
+
+static IResult ToMaintenanceHttpResult(MaintenanceTaskOperationResult result)
+{
+    if (result.Succeeded)
+    {
+        return Results.Ok(result);
     }
 
     return result.NotFound

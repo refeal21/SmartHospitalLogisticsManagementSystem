@@ -37,6 +37,39 @@ public enum FacilityStatus
     Maintenance
 }
 
+public enum AssetCriticality
+{
+    Low,
+    Medium,
+    High,
+    LifeSafety
+}
+
+public enum MaintenanceTaskType
+{
+    Inspection,
+    PreventiveMaintenance,
+    Calibration,
+    SafetyCheck
+}
+
+public enum MaintenanceTaskStatus
+{
+    Planned,
+    Due,
+    Overdue,
+    Completed,
+    RequiresRepair,
+    ConvertedToWorkOrder
+}
+
+public enum MaintenanceOutcome
+{
+    Normal,
+    Abnormal,
+    Skipped
+}
+
 public enum SignalStatus
 {
     Normal,
@@ -213,6 +246,116 @@ public sealed record DispatchOperationResult(
     bool Succeeded,
     string? ErrorMessage,
     WorkOrderDetail? Detail,
+    bool NotFound = false);
+
+public sealed record AssetLedgerItem(
+    string AssetCode,
+    string Name,
+    string System,
+    AssetCriticality Criticality,
+    SpatialLocation Location,
+    FacilityStatus Status,
+    string OwnerTeam,
+    string Manufacturer,
+    string Model,
+    string CommissionedOn,
+    string MaintenanceStrategy,
+    int HealthScore,
+    string CurrentRisk,
+    IReadOnlyList<string> SourceTags);
+
+public sealed record InspectionChecklistItem(
+    string Code,
+    string Name,
+    string Standard,
+    bool Required);
+
+public sealed record MaintenancePlan(
+    string PlanCode,
+    string AssetCode,
+    string Name,
+    MaintenanceTaskType TaskType,
+    int CycleDays,
+    DateTimeOffset NextDueAt,
+    string ResponsibleTeam,
+    IReadOnlyList<InspectionChecklistItem> ChecklistTemplate,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
+
+public sealed record InspectionChecklistResult(
+    string Code,
+    string Result,
+    string Remark);
+
+public sealed record MaintenanceTask(
+    string TaskNo,
+    string PlanCode,
+    string AssetCode,
+    string Title,
+    MaintenanceTaskType TaskType,
+    MaintenanceTaskStatus Status,
+    Priority Priority,
+    DateTimeOffset ScheduledAt,
+    DateTimeOffset DueAt,
+    string ResponsibleTeam,
+    IReadOnlyList<InspectionChecklistResult> ChecklistResults,
+    MaintenanceOutcome? Outcome = null,
+    DateTimeOffset? CompletedAt = null,
+    string? CompletedBy = null,
+    string? WorkOrderNo = null);
+
+public sealed record AssetLifecycleEvent(
+    DateTimeOffset OccurredAt,
+    string AssetCode,
+    string EventType,
+    string Operator,
+    string Summary);
+
+public sealed record AssetMaintenanceKpi(
+    int TotalAssets,
+    int RiskAssets,
+    int DueTasks,
+    int OverdueTasks,
+    decimal PreventiveCompletionRate,
+    int AverageHealthScore);
+
+public sealed record MaintenanceGeneratedWorkOrder(
+    string WorkOrderNo,
+    string Title,
+    string ServiceType,
+    Priority Priority,
+    WorkOrderStatus Status,
+    SpatialLocation Location,
+    string ResponsibleTeam,
+    DateTimeOffset CreatedAt);
+
+public sealed record AssetMaintenanceDetail(
+    AssetLedgerItem Asset,
+    IReadOnlyList<MaintenancePlan> Plans,
+    IReadOnlyList<MaintenanceTask> Tasks,
+    IReadOnlyList<AssetLifecycleEvent> Lifecycle,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
+
+public sealed record AssetMaintenanceBoard(
+    DateTimeOffset GeneratedAt,
+    IReadOnlyList<AssetLedgerItem> Assets,
+    IReadOnlyList<MaintenancePlan> Plans,
+    IReadOnlyList<MaintenanceTask> DueTasks,
+    IReadOnlyList<AssetLifecycleEvent> LifecycleEvents,
+    IReadOnlyList<FeatureEvidence> SourceEvidence,
+    AssetMaintenanceKpi Kpis);
+
+public sealed record CompleteMaintenanceTaskCommand(
+    string Operator,
+    MaintenanceOutcome Outcome,
+    string Remark,
+    IReadOnlyList<InspectionChecklistResult> ChecklistResults,
+    bool ConvertToWorkOrder);
+
+public sealed record MaintenanceTaskOperationResult(
+    bool Succeeded,
+    string? ErrorMessage,
+    MaintenanceTask? Task,
+    MaintenanceGeneratedWorkOrder? GeneratedWorkOrder = null,
     bool NotFound = false);
 
 public sealed record FeatureEvidence(

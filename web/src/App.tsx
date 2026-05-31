@@ -200,6 +200,124 @@ type DispatchBoard = {
   slaRisk: SlaRiskSummary
 }
 
+type AssetCriticality = 'Low' | 'Medium' | 'High' | 'LifeSafety'
+type MaintenanceTaskType = 'Inspection' | 'PreventiveMaintenance' | 'Calibration' | 'SafetyCheck'
+type MaintenanceTaskStatus =
+  | 'Planned'
+  | 'Due'
+  | 'Overdue'
+  | 'Completed'
+  | 'RequiresRepair'
+  | 'ConvertedToWorkOrder'
+type MaintenanceOutcome = 'Normal' | 'Abnormal' | 'Skipped'
+
+type AssetLedgerItem = {
+  assetCode: string
+  name: string
+  system: string
+  criticality: AssetCriticality
+  location: SpatialLocation
+  status: FacilityStatus
+  ownerTeam: string
+  manufacturer: string
+  model: string
+  commissionedOn: string
+  maintenanceStrategy: string
+  healthScore: number
+  currentRisk: string
+  sourceTags: string[]
+}
+
+type InspectionChecklistResult = {
+  code: string
+  result: string
+  remark: string
+}
+
+type MaintenancePlan = {
+  planCode: string
+  assetCode: string
+  name: string
+  taskType: MaintenanceTaskType
+  cycleDays: number
+  nextDueAt: string
+  responsibleTeam: string
+  checklistTemplate: { code: string; name: string; standard: string; required: boolean }[]
+  sourceEvidence: FeatureEvidence[]
+}
+
+type MaintenanceTask = {
+  taskNo: string
+  planCode: string
+  assetCode: string
+  title: string
+  taskType: MaintenanceTaskType
+  status: MaintenanceTaskStatus
+  priority: Priority
+  scheduledAt: string
+  dueAt: string
+  responsibleTeam: string
+  checklistResults: InspectionChecklistResult[]
+  outcome?: MaintenanceOutcome | null
+  completedAt?: string | null
+  completedBy?: string | null
+  workOrderNo?: string | null
+}
+
+type AssetLifecycleEvent = {
+  occurredAt: string
+  assetCode: string
+  eventType: string
+  operator: string
+  summary: string
+}
+
+type AssetMaintenanceKpi = {
+  totalAssets: number
+  riskAssets: number
+  dueTasks: number
+  overdueTasks: number
+  preventiveCompletionRate: number
+  averageHealthScore: number
+}
+
+type MaintenanceGeneratedWorkOrder = {
+  workOrderNo: string
+  title: string
+  serviceType: string
+  priority: Priority
+  status: WorkOrderStatus
+  location: SpatialLocation
+  responsibleTeam: string
+  createdAt: string
+}
+
+type AssetMaintenanceBoard = {
+  generatedAt: string
+  assets: AssetLedgerItem[]
+  plans: MaintenancePlan[]
+  dueTasks: MaintenanceTask[]
+  lifecycleEvents: AssetLifecycleEvent[]
+  sourceEvidence: FeatureEvidence[]
+  kpis: AssetMaintenanceKpi
+}
+
+type AssetMaintenanceDetail = {
+  asset: AssetLedgerItem
+  plans: MaintenancePlan[]
+  tasks: MaintenanceTask[]
+  lifecycle: AssetLifecycleEvent[]
+  sourceEvidence: FeatureEvidence[]
+}
+
+type MaintenanceTaskOperationResult = {
+  succeeded: boolean
+  errorMessage?: string | null
+  task?: MaintenanceTask | null
+  generatedWorkOrder?: MaintenanceGeneratedWorkOrder | null
+  notFound: boolean
+}
+
 const locations = {
   lobby: {
     campus: '同仁亦庄院区',
@@ -485,6 +603,127 @@ const localDispatchBoard: DispatchBoard = {
   },
 }
 
+const assetSourceEvidence: FeatureEvidence[] = [
+  {
+    featureName: '设备设施资产台账',
+    sources: ['中科医信', 'PPT'],
+    evidenceSummary: '竞品功能树要求资产分类、资产台账、资产维修管理；PPT 要求基础运行设备设施全生命周期管理。',
+  },
+  {
+    featureName: '巡检保养计划',
+    sources: ['中科医信', 'PPT'],
+    evidenceSummary: '竞品功能树要求工作日历、巡检/保养、计划管理；PPT 要求设备监测预警与运维处置联动。',
+  },
+  {
+    featureName: '医用气体监测',
+    sources: ['北建院', '中科医信', 'PPT'],
+    evidenceSummary: '客户数据、竞品功能和 PPT 均涉及医用气体压力、阀箱、报警处置和维修闭环。',
+  },
+]
+
+const localAssetMaintenanceBoard: AssetMaintenanceBoard = {
+  generatedAt: '2026-05-30T09:30:00+08:00',
+  assets: [
+    {
+      assetCode: 'WASTE-F1-01',
+      name: '医废暂存间负压设备',
+      system: '医疗废物',
+      criticality: 'LifeSafety',
+      location: locations.waste,
+      status: 'Fault',
+      ownerTeam: '环境监管班组',
+      manufacturer: 'Mock厂商',
+      model: 'NP-200',
+      commissionedOn: '2023-08-18',
+      maintenanceStrategy: '每日巡检 + 异常转工单',
+      healthScore: 52,
+      currentRisk: '负压低于阈值，需要联动医废处置工单',
+      sourceTags: ['中科医信', 'PPT'],
+    },
+    {
+      assetCode: 'MEDGAS-IPD-8F',
+      name: '住院 8F 医用气体分区阀箱',
+      system: '医用气体',
+      criticality: 'LifeSafety',
+      location: locations.ward,
+      status: 'Maintenance',
+      ownerTeam: '医气维保人员',
+      manufacturer: 'Mock厂商',
+      model: 'MGV-8F',
+      commissionedOn: '2022-05-09',
+      maintenanceStrategy: '周巡检 + 压力异常闭环',
+      healthScore: 68,
+      currentRisk: '计划保养中，需关注氧气压力波动',
+      sourceTags: ['北建院', '中科医信', 'PPT'],
+    },
+    {
+      assetCode: 'CHW-B1-02',
+      name: '冷站 2 号冷冻泵',
+      system: '暖通空调',
+      criticality: 'High',
+      location: locations.energy,
+      status: 'Normal',
+      ownerTeam: '暖通班工作人员',
+      manufacturer: 'Mock厂商',
+      model: 'CHW-P-02',
+      commissionedOn: '2021-11-12',
+      maintenanceStrategy: '月度保养 + 能耗趋势复核',
+      healthScore: 91,
+      currentRisk: '运行稳定，维持计划保养',
+      sourceTags: ['北建院', '中科医信', 'PPT'],
+    },
+  ],
+  plans: [
+    {
+      planCode: 'MP-MEDGAS-VALVE',
+      assetCode: 'MEDGAS-IPD-8F',
+      name: '医用气体分区阀箱周巡检',
+      taskType: 'Inspection',
+      cycleDays: 7,
+      nextDueAt: '2026-05-30T09:20:00+08:00',
+      responsibleTeam: '医气维保人员',
+      checklistTemplate: [
+        { code: 'CHK-PRESSURE', name: '氧气压力', standard: '压力在上下限范围内', required: true },
+        { code: 'CHK-VALVE', name: '阀门状态', standard: '阀门开闭和标识正常', required: true },
+      ],
+      sourceEvidence: assetSourceEvidence,
+    },
+  ],
+  dueTasks: [
+    {
+      taskNo: 'MT-20260530-0002',
+      planCode: 'MP-MEDGAS-VALVE',
+      assetCode: 'MEDGAS-IPD-8F',
+      title: '住院 8F 医用气体分区阀箱周巡检',
+      taskType: 'Inspection',
+      status: 'Overdue',
+      priority: 'Critical',
+      scheduledAt: '2026-05-30T08:30:00+08:00',
+      dueAt: '2026-05-30T09:20:00+08:00',
+      responsibleTeam: '医气维保人员',
+      checklistResults: [],
+    },
+  ],
+  lifecycleEvents: [
+    {
+      occurredAt: '2026-05-30T06:30:00+08:00',
+      assetCode: 'MEDGAS-IPD-8F',
+      eventType: '计划保养',
+      operator: '医气维保人员',
+      summary: '完成分区阀箱压力表校准',
+    },
+  ],
+  sourceEvidence: assetSourceEvidence,
+  kpis: {
+    totalAssets: 3,
+    riskAssets: 2,
+    dueTasks: 1,
+    overdueTasks: 1,
+    preventiveCompletionRate: 80,
+    averageHealthScore: 70,
+  },
+}
+
 const statusLabels: Record<WorkOrderStatus | FacilityStatus | SignalStatus, string> = {
   New: '新建',
   Dispatched: '已派工',
@@ -509,6 +748,22 @@ const priorityLabels: Record<Priority, string> = {
   Critical: '紧急',
 }
 
+const maintenanceStatusLabels: Record<MaintenanceTaskStatus, string> = {
+  Planned: '计划中',
+  Due: '待巡检',
+  Overdue: '已逾期',
+  Completed: '已完成',
+  RequiresRepair: '需维修',
+  ConvertedToWorkOrder: '已转工单',
+}
+
+const criticalityLabels: Record<AssetCriticality, string> = {
+  Low: '一般',
+  Medium: '重要',
+  High: '高',
+  LifeSafety: '生命安全',
+}
+
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5248'
 
 function App() {
@@ -516,6 +771,9 @@ function App() {
   const [blueprint, setBlueprint] = useState(localBlueprint)
   const [dispatchBoard, setDispatchBoard] = useState(localDispatchBoard)
   const [selectedDetail, setSelectedDetail] = useState(() => buildLocalDetail(localWorkOrders[0]))
+  const [assetBoard, setAssetBoard] = useState(localAssetMaintenanceBoard)
+  const [selectedAssetDetail, setSelectedAssetDetail] = useState(() => buildLocalAssetDetail('MEDGAS-IPD-8F'))
+  const [lastMaintenanceResult, setLastMaintenanceResult] = useState<MaintenanceTaskOperationResult | null>(null)
   const [source, setSource] = useState<'api' | 'local'>('local')
 
   useEffect(() => {
@@ -525,16 +783,19 @@ function App() {
       fetch(`${apiBase}/api/operations/dashboard`, { signal: controller.signal }),
       fetch(`${apiBase}/api/logistics/blueprint`, { signal: controller.signal }),
       fetch(`${apiBase}/api/operations/dispatch-board`, { signal: controller.signal }),
+      fetch(`${apiBase}/api/operations/asset-maintenance-board`, { signal: controller.signal }),
     ])
-      .then(async ([dashboardResponse, blueprintResponse, boardResponse]) => {
-        if (!dashboardResponse.ok || !blueprintResponse.ok || !boardResponse.ok) {
+      .then(async ([dashboardResponse, blueprintResponse, boardResponse, assetBoardResponse]) => {
+        if (!dashboardResponse.ok || !blueprintResponse.ok || !boardResponse.ok || !assetBoardResponse.ok) {
           throw new Error('Logistics API unavailable')
         }
 
         const board = (await boardResponse.json()) as DispatchBoard
+        const maintenanceBoard = (await assetBoardResponse.json()) as AssetMaintenanceBoard
         setDashboard((await dashboardResponse.json()) as OperationsDashboard)
         setBlueprint((await blueprintResponse.json()) as LogisticsBlueprint)
         setDispatchBoard(board)
+        setAssetBoard(maintenanceBoard)
         setSource('api')
 
         const firstWorkOrderNo = board.workOrders[0]?.workOrderNo
@@ -544,6 +805,17 @@ function App() {
           })
           if (detailResponse.ok) {
             setSelectedDetail((await detailResponse.json()) as WorkOrderDetail)
+          }
+        }
+
+        const firstAssetCode =
+          maintenanceBoard.dueTasks[0]?.assetCode ?? maintenanceBoard.assets[0]?.assetCode
+        if (firstAssetCode) {
+          const assetDetailResponse = await fetch(`${apiBase}/api/operations/assets/${firstAssetCode}/maintenance`, {
+            signal: controller.signal,
+          })
+          if (assetDetailResponse.ok) {
+            setSelectedAssetDetail((await assetDetailResponse.json()) as AssetMaintenanceDetail)
           }
         }
       })
@@ -567,6 +839,9 @@ function App() {
     (recommendation) => recommendation.workOrderNo === selectedDetail.workOrder.workOrderNo,
   )
   const detailedSecondaryTotal = blueprint.featureGroups.reduce((total, group) => total + group.secondaryItemCount, 0)
+  const selectedAssetDueTasks = assetBoard.dueTasks.filter(
+    (task) => task.assetCode === selectedAssetDetail.asset.assetCode,
+  )
 
   async function loadDetail(workOrderNo: string, forceApi = false) {
     if (source === 'api' || forceApi) {
@@ -581,6 +856,48 @@ function App() {
     if (order) {
       setSelectedDetail(buildLocalDetail(order))
     }
+  }
+
+  async function loadAssetDetail(assetCode: string, forceApi = false) {
+    if (source === 'api' || forceApi) {
+      const response = await fetch(`${apiBase}/api/operations/assets/${assetCode}/maintenance`)
+      if (response.ok) {
+        setSelectedAssetDetail((await response.json()) as AssetMaintenanceDetail)
+        return
+      }
+    }
+
+    setSelectedAssetDetail(buildLocalAssetDetail(assetCode))
+  }
+
+  async function completeMaintenanceTask(task: MaintenanceTask, convertToWorkOrder: boolean) {
+    const checklistResults: InspectionChecklistResult[] =
+      task.assetCode === 'MEDGAS-IPD-8F'
+        ? [
+            { code: 'CHK-PRESSURE', result: '异常', remark: '氧气压力低于下限' },
+            { code: 'CHK-VALVE', result: '正常', remark: '阀门状态正常' },
+          ]
+        : [{ code: 'CHK-NEGATIVE-PRESSURE', result: '异常', remark: '负压低于阈值' }]
+
+    if (source === 'api') {
+      const response = await fetch(`${apiBase}/api/operations/maintenance-tasks/${task.taskNo}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operator: task.responsibleTeam,
+          outcome: convertToWorkOrder ? 'Abnormal' : 'Normal',
+          remark: convertToWorkOrder ? '巡检发现异常，生成维修工单闭环' : '巡检项目全部正常',
+          checklistResults,
+          convertToWorkOrder,
+        }),
+      })
+      if (response.ok) {
+        applyMaintenanceResult((await response.json()) as MaintenanceTaskOperationResult)
+        return
+      }
+    }
+
+    applyMaintenanceResult(buildLocalMaintenanceResult(task, convertToWorkOrder, checklistResults))
   }
 
   async function dispatchSelected() {
@@ -653,6 +970,56 @@ function App() {
       workOrders: current.workOrders.map((order) =>
         order.workOrderNo === detail.workOrder.workOrderNo ? detail.workOrder : order,
       ),
+    }))
+  }
+
+  function applyMaintenanceResult(result: MaintenanceTaskOperationResult) {
+    if (!result.succeeded || !result.task) {
+      return
+    }
+
+    const completedTask = result.task
+    setLastMaintenanceResult(result)
+    setAssetBoard((current) => ({
+      ...current,
+      dueTasks: current.dueTasks
+        .map((task) => (task.taskNo === completedTask.taskNo ? completedTask : task))
+        .filter((task) => task.status !== 'Completed' && task.status !== 'ConvertedToWorkOrder'),
+      lifecycleEvents: [
+        {
+          occurredAt: completedTask.completedAt ?? new Date().toISOString(),
+          assetCode: completedTask.assetCode,
+          eventType: result.generatedWorkOrder ? '异常转工单' : '完成巡检',
+          operator: completedTask.completedBy ?? completedTask.responsibleTeam,
+          summary: result.generatedWorkOrder
+            ? `${completedTask.title} 已生成 ${result.generatedWorkOrder.workOrderNo}`
+            : `${completedTask.title} 已完成`,
+        },
+        ...current.lifecycleEvents,
+      ],
+      kpis: {
+        ...current.kpis,
+        dueTasks: Math.max(current.kpis.dueTasks - 1, 0),
+        overdueTasks: completedTask.status === 'ConvertedToWorkOrder'
+          ? Math.max(current.kpis.overdueTasks - 1, 0)
+          : current.kpis.overdueTasks,
+      },
+    }))
+    setSelectedAssetDetail((current) => ({
+      ...current,
+      tasks: current.tasks.map((task) => (task.taskNo === completedTask.taskNo ? completedTask : task)),
+      lifecycle: [
+        {
+          occurredAt: completedTask.completedAt ?? new Date().toISOString(),
+          assetCode: completedTask.assetCode,
+          eventType: result.generatedWorkOrder ? '异常转工单' : '完成巡检',
+          operator: completedTask.completedBy ?? completedTask.responsibleTeam,
+          summary: result.generatedWorkOrder
+            ? `${completedTask.title} 已生成 ${result.generatedWorkOrder.workOrderNo}`
+            : `${completedTask.title} 已完成`,
+        },
+        ...current.lifecycle,
+      ],
     }))
   }
 
@@ -790,6 +1157,95 @@ function App() {
                       <strong>{entry.action}</strong>
                       <span>{entry.operator} · {statusLabels[entry.fromStatus]} → {statusLabels[entry.toStatus]}</span>
                       <small>{entry.remark}</small>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            </div>
+          </section>
+
+          <section className="panel asset-maintenance-panel">
+            <PanelHeader title="资产台账与巡检保养" meta="台账 / BIM位置 / 计划任务 / 异常转工单" />
+            <div className="asset-maintenance-workbench">
+              <section>
+                <h2>设备设施台账</h2>
+                <div className="asset-list">
+                  {assetBoard.assets.map((asset) => (
+                    <button
+                      className={`asset-card ${selectedAssetDetail.asset.assetCode === asset.assetCode ? 'selected' : ''}`}
+                      key={asset.assetCode}
+                      type="button"
+                      onClick={() => void loadAssetDetail(asset.assetCode)}
+                    >
+                      <strong>{asset.name}</strong>
+                      <span>{asset.assetCode} / {asset.system} / {criticalityLabels[asset.criticality]}</span>
+                      <small>健康度 {asset.healthScore} / {statusLabels[asset.status]}</small>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="asset-detail-panel">
+                <h2>资产详情</h2>
+                <div className="detail-title">
+                  <strong>{selectedAssetDetail.asset.name}</strong>
+                  <span>{selectedAssetDetail.asset.assetCode}</span>
+                </div>
+                <dl className="detail-list">
+                  <div>
+                    <dt>BIM</dt>
+                    <dd>{selectedAssetDetail.asset.location.bimElementId}</dd>
+                  </div>
+                  <div>
+                    <dt>位置</dt>
+                    <dd>{selectedAssetDetail.asset.location.building} / {selectedAssetDetail.asset.location.room}</dd>
+                  </div>
+                  <div>
+                    <dt>策略</dt>
+                    <dd>{selectedAssetDetail.asset.maintenanceStrategy}</dd>
+                  </div>
+                  <div>
+                    <dt>风险</dt>
+                    <dd>{selectedAssetDetail.asset.currentRisk}</dd>
+                  </div>
+                </dl>
+              </section>
+
+              <section className="maintenance-task-panel">
+                <h2>巡检任务</h2>
+                {(selectedAssetDueTasks.length > 0 ? selectedAssetDueTasks : selectedAssetDetail.tasks).map((task) => (
+                  <article className="maintenance-task-card" key={task.taskNo}>
+                    <div>
+                      <strong>{task.title}</strong>
+                      <span>{task.taskNo} / {maintenanceStatusLabels[task.status]} / {priorityLabels[task.priority]}</span>
+                    </div>
+                    {task.workOrderNo ? <em>{task.workOrderNo}</em> : null}
+                    <button
+                      type="button"
+                      disabled={task.status === 'Completed' || task.status === 'ConvertedToWorkOrder'}
+                      onClick={() => void completeMaintenanceTask(task, true)}
+                    >
+                      异常完成并转工单
+                    </button>
+                  </article>
+                ))}
+                {lastMaintenanceResult?.generatedWorkOrder ? (
+                  <div className="generated-workorder">
+                    <strong>已转工单</strong>
+                    <span>{lastMaintenanceResult.generatedWorkOrder.workOrderNo}</span>
+                    <small>{lastMaintenanceResult.generatedWorkOrder.title}</small>
+                  </div>
+                ) : null}
+              </section>
+
+              <section className="asset-lifecycle-panel">
+                <h2>生命周期记录</h2>
+                <ol>
+                  {selectedAssetDetail.lifecycle.slice(0, 5).map((item) => (
+                    <li key={`${item.occurredAt}-${item.eventType}`}>
+                      <strong>{item.eventType}</strong>
+                      <span>{item.operator}</span>
+                      <small>{item.summary}</small>
                     </li>
                   ))}
                 </ol>
@@ -986,6 +1442,59 @@ function buildLocalDetail(order: WorkOrder): WorkOrderDetail {
     slaRiskLevel: order.priority === 'Critical' || order.status === 'Escalated' ? 'High' : 'Medium',
     slaMinutesRemaining: order.workOrderNo === 'WO-20260530-0001' ? 18 : 120,
     allowedActions: ['Dispatch', 'Accept', 'Suspend', 'Complete'],
+  }
+}
+
+function buildLocalAssetDetail(assetCode: string): AssetMaintenanceDetail {
+  const asset =
+    localAssetMaintenanceBoard.assets.find((item) => item.assetCode === assetCode) ??
+    localAssetMaintenanceBoard.assets[0]
+  const plans = localAssetMaintenanceBoard.plans.filter((plan) => plan.assetCode === asset.assetCode)
+  const tasks = localAssetMaintenanceBoard.dueTasks.filter((task) => task.assetCode === asset.assetCode)
+  const lifecycle = localAssetMaintenanceBoard.lifecycleEvents.filter((item) => item.assetCode === asset.assetCode)
+
+  return {
+    asset,
+    plans,
+    tasks,
+    lifecycle,
+    sourceEvidence: assetSourceEvidence,
+  }
+}
+
+function buildLocalMaintenanceResult(
+  task: MaintenanceTask,
+  convertToWorkOrder: boolean,
+  checklistResults: InspectionChecklistResult[],
+): MaintenanceTaskOperationResult {
+  const completedAt = new Date().toISOString()
+  const generatedWorkOrder = convertToWorkOrder
+    ? {
+        workOrderNo: `WO-MT-${task.taskNo.replace('MT-', '')}`,
+        title: `${task.title}异常处置`,
+        serviceType: '设备巡检异常',
+        priority: task.priority,
+        status: 'New' as WorkOrderStatus,
+        location: buildLocalAssetDetail(task.assetCode).asset.location,
+        responsibleTeam: task.responsibleTeam,
+        createdAt: completedAt,
+      }
+    : null
+
+  return {
+    succeeded: true,
+    errorMessage: null,
+    task: {
+      ...task,
+      status: convertToWorkOrder ? 'ConvertedToWorkOrder' : 'Completed',
+      outcome: convertToWorkOrder ? 'Abnormal' : 'Normal',
+      completedAt,
+      completedBy: task.responsibleTeam,
+      checklistResults,
+      workOrderNo: generatedWorkOrder?.workOrderNo ?? null,
+    },
+    generatedWorkOrder,
+    notFound: false,
   }
 }
 

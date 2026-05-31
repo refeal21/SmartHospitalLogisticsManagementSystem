@@ -1,22 +1,29 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 
-type OperationDomain =
-  | 'Foundation'
-  | 'LogisticsService'
-  | 'Environment'
-  | 'IntegratedManagement'
-
+type OperationDomain = 'Foundation' | 'LogisticsService' | 'Environment' | 'IntegratedManagement'
 type Priority = 'Low' | 'Normal' | 'High' | 'Critical'
 type WorkOrderStatus =
   | 'New'
   | 'Dispatched'
+  | 'Accepted'
   | 'InProgress'
+  | 'Suspended'
+  | 'Transferred'
   | 'PendingAcceptance'
   | 'Closed'
   | 'Escalated'
 type FacilityStatus = 'Normal' | 'Warning' | 'Fault' | 'Maintenance'
 type SignalStatus = 'Normal' | 'Warning' | 'Critical'
+type WorkOrderTransitionAction =
+  | 'Accept'
+  | 'Suspend'
+  | 'Transfer'
+  | 'Complete'
+  | 'AcceptCompletion'
+  | 'RejectCompletion'
+  | 'Evaluate'
+  | 'Escalate'
 
 type SpatialLocation = {
   campus: string
@@ -149,6 +156,50 @@ type LogisticsBlueprint = {
   implementationPhases: ImplementationPhase[]
 }
 
+type WorkOrderTimelineEntry = {
+  occurredAt: string
+  operator: string
+  action: string
+  fromStatus: WorkOrderStatus
+  toStatus: WorkOrderStatus
+  remark: string
+  rating?: number | null
+}
+
+type DispatchRecommendation = {
+  workOrderNo: string
+  recommendedTeam: string
+  reason: string
+  priority: Priority
+  slaMinutesRemaining: number
+}
+
+type SlaRiskSummary = {
+  openWorkOrders: number
+  overdueWorkOrders: number
+  dueSoonWorkOrders: number
+  escalatedWorkOrders: number
+  highestRiskLevel: string
+  highestRiskWorkOrderNo?: string | null
+}
+
+type WorkOrderDetail = {
+  workOrder: WorkOrder
+  location: SpatialLocation
+  sourceEvidence: FeatureEvidence[]
+  timeline: WorkOrderTimelineEntry[]
+  slaRiskLevel: string
+  slaMinutesRemaining: number
+  allowedActions: string[]
+}
+
+type DispatchBoard = {
+  workOrders: WorkOrder[]
+  teamLoads: TeamLoad[]
+  recommendations: DispatchRecommendation[]
+  slaRisk: SlaRiskSummary
+}
+
 const locations = {
   lobby: {
     campus: '同仁亦庄院区',
@@ -180,90 +231,82 @@ const locations = {
   },
 }
 
-const localDashboard: OperationsDashboard = {
-  generatedAt: '2026-05-30T09:30:00+08:00',
-  openWorkOrders: 4,
-  escalatedWorkOrders: 1,
-  riskAssets: 2,
-  warningSignals: 2,
-  assets: [
-    {
-      assetCode: 'ELV-OPD-01',
-      name: '门诊楼 1 号医梯',
-      system: '电梯管理',
-      location: locations.lobby,
-      status: 'Warning',
-      lastSignalAt: '2026-05-30T09:22:00+08:00',
-      currentRisk: '运行频次突增，建议提前巡检曳引系统',
-    },
-    {
-      assetCode: 'WASTE-F1-01',
-      name: '医废暂存间负压设备',
-      system: '医疗废弃物',
-      location: locations.waste,
-      status: 'Fault',
-      lastSignalAt: '2026-05-30T09:25:00+08:00',
-      currentRisk: '负压值低于阈值，已触发应急工单',
-    },
-  ],
-  workOrders: [
-    {
-      workOrderNo: 'WO-20260530-0001',
-      title: '医废暂存间负压异常处置',
-      serviceType: '环境应急',
-      priority: 'Critical',
-      status: 'Escalated',
-      location: locations.waste,
-      responsibleTeam: '环境监管班组',
-      createdAt: '2026-05-30T08:48:00+08:00',
-      slaDueAt: '2026-05-30T09:48:00+08:00',
-    },
-    {
-      workOrderNo: 'WO-20260530-0002',
-      title: '门诊大厅医梯运行异响巡检',
-      serviceType: '设备维修',
-      priority: 'High',
-      status: 'Dispatched',
-      location: locations.lobby,
-      responsibleTeam: '电梯维保组',
-      createdAt: '2026-05-30T09:04:00+08:00',
-      slaDueAt: '2026-05-30T11:30:00+08:00',
-    },
-    {
-      workOrderNo: 'WO-20260530-0003',
-      title: '眼科病区被服补给',
-      serviceType: '后勤配送',
-      priority: 'Normal',
-      status: 'InProgress',
-      location: locations.ward,
-      responsibleTeam: '被服配送组',
-      createdAt: '2026-05-30T09:12:00+08:00',
-      slaDueAt: '2026-05-30T12:30:00+08:00',
-    },
-  ],
-  environmentSignals: [
-    {
-      signalCode: 'ENV-WASTE-PRESSURE',
-      name: '医废暂存间负压',
-      metric: 'pressure',
-      value: -3.2,
-      unit: 'Pa',
-      status: 'Critical',
-      location: locations.waste,
-      collectedAt: '2026-05-30T09:27:00+08:00',
-    },
-    {
-      signalCode: 'ENV-OPD-CO2',
-      name: '门诊大厅 CO2',
-      metric: 'co2',
-      value: 860,
-      unit: 'ppm',
-      status: 'Warning',
-      location: locations.lobby,
-      collectedAt: '2026-05-30T09:26:00+08:00',
-    },
-  ],
-}
+const sourceEvidence: FeatureEvidence[] = [
+  {
+    featureName: '工单全流程管理',
+    sources: ['中科医信', 'PPT'],
+    evidenceSummary: '竞品明确报修、派单、接单、挂单、转单、完工、验收、评价；PPT要求一站式服务闭环。',
+  },
+  {
+    featureName: '供配电监测',
+    sources: ['北建院', '中科医信', 'PPT'],
+    evidenceSummary: '客户数据包含电压、电流、功率、功率因数、频率、电度、谐波；竞品有供配电监测专项。',
+  },
+  {
+    featureName: '医疗废弃物管理',
+    sources: ['中科医信', 'PPT'],
+    evidenceSummary: '竞品覆盖收集、暂存站、扎带、全生命周期监管；PPT环境监管域要求医废处置。',
+  },
+  {
+    featureName: '综合能耗监管',
+    sources: ['中科医信', 'PPT'],
+    evidenceSummary: '竞品包含用能总览、实时监控、告警、分析、报表、成本和配置。',
+  },
+]
+
+const localWorkOrders: WorkOrder[] = [
+  {
+    workOrderNo: 'WO-20260530-0001',
+    title: '医废暂存间负压异常处置',
+    serviceType: '环境应急',
+    priority: 'Critical',
+    status: 'Escalated',
+    location: locations.waste,
+    responsibleTeam: '未派工',
+    createdAt: '2026-05-30T08:48:00+08:00',
+    slaDueAt: '2026-05-30T09:48:00+08:00',
+  },
+  {
+    workOrderNo: 'WO-20260530-0002',
+    title: '门诊大厅医梯运行异响巡检',
+    serviceType: '设备维修',
+    priority: 'High',
+    status: 'Dispatched',
+    location: locations.lobby,
+    responsibleTeam: '电梯维保组',
+    createdAt: '2026-05-30T09:04:00+08:00',
+    slaDueAt: '2026-05-30T11:30:00+08:00',
+  },
+  {
+    workOrderNo: 'WO-20260530-0003',
+    title: '眼科病区被服补给',
+    serviceType: '后勤配送',
+    priority: 'Normal',
+    status: 'Accepted',
+    location: locations.ward,
+    responsibleTeam: '被服配送组',
+    createdAt: '2026-05-30T09:12:00+08:00',
+    slaDueAt: '2026-05-30T12:30:00+08:00',
+  },
+  {
+    workOrderNo: 'WO-20260530-0004',
+    title: '冷站机房夜间节能策略复核',
+    serviceType: '能耗优化',
+    priority: 'Normal',
+    status: 'PendingAcceptance',
+    location: locations.energy,
+    responsibleTeam: '能源管理组',
+    createdAt: '2026-05-30T05:30:00+08:00',
+    slaDueAt: '2026-05-30T13:30:00+08:00',
+  },
+]
+
+const localTeamLoads: TeamLoad[] = [
+  { teamName: '环境监管班组', domain: '环境监管', activeTasks: 11, capacity: 12, recommendation: '医废负压告警优先派工' },
+  { teamName: '综合维修班', domain: '一站式服务', activeTasks: 18, capacity: 24, recommendation: '可承接一般维修与巡检工单' },
+  { teamName: '电梯维保组', domain: '设备设施', activeTasks: 6, capacity: 8, recommendation: '保留困人事件应急余量' },
+  { teamName: '能源管理组', domain: '基础运行', activeTasks: 9, capacity: 16, recommendation: '适合承接夜间节能策略复核' },
+]
 
 const localBlueprint: LogisticsBlueprint = {
   pptReportedPrimaryModuleTotal: 29,
@@ -323,122 +366,45 @@ const localBlueprint: LogisticsBlueprint = {
     { code: 'ACTIVE_ALERTS', name: '运行告警', value: '12', trend: '-4', tone: 'red' },
     { code: 'ASSET_HEALTH', name: '设备完好率', value: '98.2%', trend: '+0.6%', tone: 'green' },
   ],
-  teamLoads: [
-    { teamName: '综合维修班', domain: '一站式服务', activeTasks: 18, capacity: 24, recommendation: '可承接一般维修与巡检工单' },
-    { teamName: '电梯维保组', domain: '设备设施', activeTasks: 6, capacity: 8, recommendation: '保留困人事件应急余量' },
-    { teamName: '环境监管班组', domain: '环境监管', activeTasks: 11, capacity: 12, recommendation: '医废负压告警优先派工' },
-  ],
-  featureEvidence: [
-    { featureName: '个人工作台', sources: ['中科医信'], evidenceSummary: '竞品明确工作台、待办、消息、工作日历和应用入口，作为日常运营起点。' },
-    { featureName: '工单全流程管理', sources: ['中科医信', 'PPT'], evidenceSummary: '竞品给出报修、派单、接单、挂单、转单、完工、验收、评价；PPT要求一站式服务闭环。' },
-    { featureName: '供配电监测', sources: ['北建院', '中科医信', 'PPT'], evidenceSummary: '客户数据包含电压、电流、功率、功率因数、频率、电度、谐波；竞品有供配电监测专项。' },
-    { featureName: '暖通冷热站监测', sources: ['北建院', '中科医信', 'PPT'], evidenceSummary: '客户数据包含冷源、热源、空调水、新风、净化空调和医气相关点位。' },
-    { featureName: '医疗废弃物管理', sources: ['中科医信', 'PPT'], evidenceSummary: '竞品覆盖收集、暂存站、扎带、全生命周期监管；PPT环境监管域要求医废处置。' },
-    { featureName: '可视化空间运维', sources: ['中科医信', 'PPT'], evidenceSummary: '竞品有建筑空间、平面图、空间使用；PPT明确 BIM 空间底座。' },
-  ],
+  teamLoads: localTeamLoads,
+  featureEvidence: sourceEvidence,
   customerDataSystems: [
-    {
-      major: '结构健康系统',
-      subsystems: ['沉降传感器', '位移传感器', '应变计传感器', '温度监测传感器', '强震仪'],
-      sensors: ['沉降传感器', '位移传感器', '应变计', '温度监测传感器'],
-      locations: ['结构监测点位'],
-      dataFields: ['院区', '楼号', '楼层', '空间编号', '设备编号', '时间', '数值'],
-      desiredData: ['结构位移', '沉降', '应变', '温度', '震动'],
-      roles: ['总务处管理者', '医院管理者', '第三方服务方'],
-      endpoints: ['控制室电脑端', '移动端'],
-    },
     {
       major: '强电系统',
       subsystems: ['变电室智能配电系统', '多功能远传电表系统', '电力系统', '照明', '防雷接地'],
-      sensors: ['多功能测量仪表', '电能质量仪表', '单相/三相多功能电表'],
-      locations: ['变电室低压进线及馈出回路', '楼层配电柜', '配电分盘'],
-      dataFields: ['电压', '电流', '有功功率', '无功功率', '功率因数', '频率', '电度', '谐波'],
-      desiredData: ['温湿度', '浪涌保护器运行状态', '照明设备数量', '光照度'],
+      sensors: ['多功能测量仪表', '电能质量仪表', '三相多功能电表'],
+      locations: ['变电室', '楼层配电柜', '配电分盘'],
+      dataFields: ['电压', '电流', '有功功率', '功率因数', '频率', '电度', '谐波'],
+      desiredData: ['温湿度', '浪涌保护器状态', '照明设备数量'],
       roles: ['电工班工作人员', '总务处管理者', '医院管理者'],
       endpoints: ['控制室电脑端', '移动端'],
     },
     {
       major: '供暖空调系统',
-      subsystems: ['热源及供暖水系统', '通风系统', '冷源及空调水系统', '空气处理机组', '新风机组', '净化空调系统', '医用气体系统'],
+      subsystems: ['热源及供暖水系统', '通风系统', '冷源及空调水系统', '空气处理机组', '新风机组', '净化空调系统'],
       sensors: ['温湿度传感器', 'CO2浓度传感器', '压差传感器', '空气质量传感器'],
-      locations: ['送风口', '水盘管处', '室内点位', '过滤器处', '送风机处'],
-      dataFields: ['供回水温', '压力', '流量', '能耗', '电流', '电压', '启停状态', '故障状态'],
-      desiredData: ['冷源状态', '空调水系统状态', '净化空调状态', '医气压力与流量', '室内空气质量'],
-      roles: ['暖通班工作人员', '总务处管理者', '医院管理者', '第三方服务方'],
+      locations: ['送风口', '水盘管处', '室内点位', '过滤器处'],
+      dataFields: ['供回水温', '压力', '流量', '能耗', '启停状态', '故障状态'],
+      desiredData: ['冷源状态', '空调水系统状态', '室内空气质量'],
+      roles: ['暖通班工作人员', '总务处管理者', '医院管理者'],
       endpoints: ['控制室电脑端', '移动端'],
-    },
-    {
-      major: '给排水系统',
-      subsystems: ['给水系统', '热水系统', '中水系统', '排水系统', '消防水', '饮用水系统', '供油系统'],
-      sensors: ['压力传感器', '液位传感器', '流量计', '水质传感器'],
-      locations: ['泵房', '水箱', '管网', '污水处理站'],
-      dataFields: ['压力', '流量', '液位', '水温', '水质', '泵运行状态', '故障状态'],
-      desiredData: ['医疗废水监测', '污水系统监测', '供水安全保障', '设备轮换运行'],
-      roles: ['给排水班工作人员', '总务处管理者', '医院管理者'],
-      endpoints: ['控制室电脑端', '移动端'],
-    },
-    {
-      major: '火灾自动报警及联动控制系统',
-      subsystems: ['火灾自动报警', '电气火灾监控系统', '防火门监控', '可燃气体探测报警系统'],
-      sensors: ['烟感', '温感', '可燃气体探测器', '电气火灾监测设备'],
-      locations: ['消防控制室', '楼层公共区', '设备间'],
-      dataFields: ['报警状态', '设备状态', '联动状态', '故障状态', '时间'],
-      desiredData: ['消防报警联动', '设备故障', '防火门状态', '可燃气体浓度'],
-      roles: ['消防值班人员', '总务处管理者', '医院管理者'],
-      endpoints: ['控制室电脑端', '移动端'],
-    },
-    {
-      major: '智能化系统',
-      subsystems: ['智能化集成系统', '建筑设备管理系统', '公共安全系统', '信息设施系统', '机房工程'],
-      sensors: ['摄像机', '门禁', '楼控网关', '网络设备', '机房环境传感器'],
-      locations: ['安防机房', '弱电机房', '楼宇设备间', '公共区域'],
-      dataFields: ['设备在线状态', '报警状态', '运行参数', '事件记录', '空间定位'],
-      desiredData: ['系统集成数据', '安防事件', '楼控状态', '机房环境'],
-      roles: ['信息化管理者', '保卫人员', '总务处管理者', '医院管理者'],
-      endpoints: ['控制室电脑端', '移动端'],
-    },
-    {
-      major: '机器人',
-      subsystems: ['变电室巡检机器人', '安防巡检机器人', '配送机器人'],
-      sensors: ['机器人本体传感器', '摄像头', '定位模块', '任务采集'],
-      locations: ['变电室', '公共安防区域', '配送路线'],
-      dataFields: ['任务状态', '定位', '巡检结果', '异常告警', '配送状态'],
-      desiredData: ['机器人任务', '异常识别', '路线执行', '配送完成率'],
-      roles: ['运维人员', '保卫人员', '配送班组', '医院管理者'],
-      endpoints: ['移动端', '控制室电脑端'],
     },
     {
       major: '其他物联设备',
       subsystems: ['智慧卫生间', '智慧食堂系统', '无人零售物联系统'],
-      sensors: ['厕位传感器', '空气质量传感器', '耗材传感器', '油烟监测', '食安监测'],
+      sensors: ['厕位传感器', '空气质量传感器', '耗材传感器', '油烟监测'],
       locations: ['卫生间', '食堂后厨', '公共服务区'],
-      dataFields: ['厕位状态', '空气质量', '耗材余量', '油烟状态', '设备运行状态'],
-      desiredData: ['智慧卫生间服务状态', '食安强化监测', '无人零售状态'],
-      roles: ['保洁班组', '食堂管理人员', '总务处管理者', '医院管理者'],
+      dataFields: ['厕位状态', '空气质量', '耗材余量', '油烟状态'],
+      desiredData: ['智慧卫生间服务状态', '食安强化监测'],
+      roles: ['保洁班组', '食堂管理人员', '总务处管理者'],
       endpoints: ['移动端', '控制室电脑端'],
     },
   ],
   competitorModules: [
-    { name: '智慧医院运行保障系统基础服务模块', featureAreas: ['个人工作台', '用户管理', '角色权限管理', '统一登录管理', '工单管理', '消息推送管理', '日志管理'] },
-    { name: '可视化数据驾驶舱管理系统', featureAreas: ['综合服务', '品质管理', '设备安全', '能耗管理'] },
-    { name: '智能移动应用终端系统', featureAreas: ['消息管理', '一站式服务管理', '统一报警管理', '设备运维管理', '数据统计分析'] },
-    { name: '智能基础运行资产台账管理系统', featureAreas: ['资产分类管理', '资产台账管理', '资产维修管理'] },
-    { name: '基础运行设备设施使用运维系统', featureAreas: ['工作日历', '消息管理', '报修管理', '巡检/保养管理', '计划管理'] },
-    { name: '后勤供料配件耗材库智能管理系统', featureAreas: ['基础信息管理', '仓库管理', '采购决策', '耗材精细化', '统计分析'] },
-    { name: '智慧电梯运行监测管理系统', featureAreas: ['运行实时监测', '报警管理', '可视报警求助', '统计分析'] },
-    { name: '医用气体预警监测管理系统', featureAreas: ['氧气系统监测', '压缩空气系统监测', '负压真空系统监测', '特殊气体汇流排监测', '报警接收与处置'] },
-    { name: '供配电监测管理系统', featureAreas: ['运行总览', '电力监测', '数据报表'] },
-    { name: '给排水监测管理系统', featureAreas: ['运行总览', '运行监测', 'APP远程监控'] },
-    { name: '冷热站监测管理系统', featureAreas: ['运行总览', '运行监测', 'App远程监控'] },
-    { name: '环境质量监测管理系统', featureAreas: ['运行总览', '运行监测', '监测分区配置', '环境区间配置'] },
-    { name: '污水站监测管理系统', featureAreas: ['实时监测', '报警处理'] },
-    { name: '智能一站式服务综合管理系统', featureAreas: ['一站式服务调度中心', '维修管理', '移动报修', '工程仓库管理', '报表管理', '大屏管理'] },
-    { name: '智慧保洁服务管理系统', featureAreas: ['工作日历', '任务概览', '计划管理', '任务管理', '应急保洁', '统计分析管理'] },
-    { name: '医疗废弃物综合管理系统', featureAreas: ['收集总览', '数据可视化大屏', '医废全生命周期监管', '暂存站监管', '医废扎带管理', '统计分析'] },
-    { name: '可视化空间运维管理系统', featureAreas: ['建筑空间管理', '空间平面图', '空间使用管理', '空间统计分析', '空间租赁管理'] },
-    { name: '综合能耗智能监管系统', featureAreas: ['用能总览', '实时监控', '告警管理', '用能分析', '报表管理', '成本管理', '配置管理'] },
-    { name: '后勤业务集成管理系统', featureAreas: ['业务集成', '数据联动', '统一入口'] },
-    { name: '服务品质集成管理系统', featureAreas: ['服务品质', '考核评价', '报告分析'] },
+    { name: '智慧医院运行保障系统基础服务模块', featureAreas: ['个人工作台', '用户管理', '角色权限管理', '统一登录管理', '工单管理', '消息推送管理'] },
+    { name: '医疗废弃物综合管理系统', featureAreas: ['收集总览', '数据可视化大屏', '医废全生命周期监管', '暂存站监管', '医废扎带管理'] },
+    { name: '综合能耗智能监管系统', featureAreas: ['用能总览', '实时监控', '告警管理', '用能分析', '报表管理', '成本管理'] },
+    { name: '智能一站式服务综合管理系统', featureAreas: ['一站式服务调度中心', '维修管理', '移动报修', '工程仓库管理', '报表管理'] },
   ],
   implementationPhases: [
     { order: 1, name: '基础平台与工作台', capabilities: ['个人工作台', '消息', '待办', '权限', '登录日志'] },
@@ -450,10 +416,82 @@ const localBlueprint: LogisticsBlueprint = {
   ],
 }
 
+const localDashboard: OperationsDashboard = {
+  generatedAt: '2026-05-30T09:30:00+08:00',
+  openWorkOrders: 4,
+  escalatedWorkOrders: 1,
+  riskAssets: 2,
+  warningSignals: 2,
+  assets: [
+    {
+      assetCode: 'ELV-OPD-01',
+      name: '门诊楼 1 号医梯',
+      system: '电梯管理',
+      location: locations.lobby,
+      status: 'Warning',
+      lastSignalAt: '2026-05-30T09:22:00+08:00',
+      currentRisk: '运行频次突增，建议提前巡检曳引系统',
+    },
+    {
+      assetCode: 'WASTE-F1-01',
+      name: '医废暂存间负压设备',
+      system: '医疗废弃物',
+      location: locations.waste,
+      status: 'Fault',
+      lastSignalAt: '2026-05-30T09:25:00+08:00',
+      currentRisk: '负压值低于阈值，已触发应急工单',
+    },
+  ],
+  workOrders: localWorkOrders,
+  environmentSignals: [
+    {
+      signalCode: 'ENV-WASTE-PRESSURE',
+      name: '医废暂存间负压',
+      metric: 'pressure',
+      value: -3.2,
+      unit: 'Pa',
+      status: 'Critical',
+      location: locations.waste,
+      collectedAt: '2026-05-30T09:27:00+08:00',
+    },
+    {
+      signalCode: 'ENV-OPD-CO2',
+      name: '门诊大厅 CO2',
+      metric: 'co2',
+      value: 860,
+      unit: 'ppm',
+      status: 'Warning',
+      location: locations.lobby,
+      collectedAt: '2026-05-30T09:26:00+08:00',
+    },
+  ],
+}
+
+const localDispatchBoard: DispatchBoard = {
+  workOrders: localWorkOrders,
+  teamLoads: localTeamLoads,
+  recommendations: [
+    { workOrderNo: 'WO-20260530-0001', recommendedTeam: '环境监管班组', reason: '环境应急按医废负压风险优先派工', priority: 'Critical', slaMinutesRemaining: 18 },
+    { workOrderNo: 'WO-20260530-0002', recommendedTeam: '电梯维保组', reason: '医梯异响按设备专项班组派工', priority: 'High', slaMinutesRemaining: 120 },
+    { workOrderNo: 'WO-20260530-0003', recommendedTeam: '综合维修班', reason: '后勤配送可由综合服务班组承接', priority: 'Normal', slaMinutesRemaining: 180 },
+  ],
+  slaRisk: {
+    openWorkOrders: 4,
+    overdueWorkOrders: 0,
+    dueSoonWorkOrders: 1,
+    escalatedWorkOrders: 1,
+    highestRiskLevel: 'High',
+    highestRiskWorkOrderNo: 'WO-20260530-0001',
+  },
+}
+
 const statusLabels: Record<WorkOrderStatus | FacilityStatus | SignalStatus, string> = {
   New: '新建',
   Dispatched: '已派工',
+  Accepted: '处理中',
   InProgress: '处理中',
+  Suspended: '已挂单',
+  Transferred: '已转单',
   PendingAcceptance: '待验收',
   Closed: '已关闭',
   Escalated: '已升级',
@@ -471,27 +509,43 @@ const priorityLabels: Record<Priority, string> = {
   Critical: '紧急',
 }
 
+const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5248'
+
 function App() {
   const [dashboard, setDashboard] = useState(localDashboard)
   const [blueprint, setBlueprint] = useState(localBlueprint)
+  const [dispatchBoard, setDispatchBoard] = useState(localDispatchBoard)
+  const [selectedDetail, setSelectedDetail] = useState(() => buildLocalDetail(localWorkOrders[0]))
   const [source, setSource] = useState<'api' | 'local'>('local')
 
   useEffect(() => {
     const controller = new AbortController()
-    const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5248'
 
     Promise.all([
       fetch(`${apiBase}/api/operations/dashboard`, { signal: controller.signal }),
       fetch(`${apiBase}/api/logistics/blueprint`, { signal: controller.signal }),
+      fetch(`${apiBase}/api/operations/dispatch-board`, { signal: controller.signal }),
     ])
-      .then(async ([dashboardResponse, blueprintResponse]) => {
-        if (!dashboardResponse.ok || !blueprintResponse.ok) {
+      .then(async ([dashboardResponse, blueprintResponse, boardResponse]) => {
+        if (!dashboardResponse.ok || !blueprintResponse.ok || !boardResponse.ok) {
           throw new Error('Logistics API unavailable')
         }
 
+        const board = (await boardResponse.json()) as DispatchBoard
         setDashboard((await dashboardResponse.json()) as OperationsDashboard)
         setBlueprint((await blueprintResponse.json()) as LogisticsBlueprint)
+        setDispatchBoard(board)
         setSource('api')
+
+        const firstWorkOrderNo = board.workOrders[0]?.workOrderNo
+        if (firstWorkOrderNo) {
+          const detailResponse = await fetch(`${apiBase}/api/operations/work-orders/${firstWorkOrderNo}`, {
+            signal: controller.signal,
+          })
+          if (detailResponse.ok) {
+            setSelectedDetail((await detailResponse.json()) as WorkOrderDetail)
+          }
+        }
       })
       .catch(() => {
         setSource('local')
@@ -502,17 +556,105 @@ function App() {
 
   const sortedWorkOrders = useMemo(
     () =>
-      [...dashboard.workOrders].sort((left, right) => {
+      [...dispatchBoard.workOrders].sort((left, right) => {
         const weight: Record<Priority, number> = { Low: 1, Normal: 2, High: 3, Critical: 4 }
         return weight[right.priority] - weight[left.priority]
       }),
-    [dashboard.workOrders],
+    [dispatchBoard.workOrders],
   )
 
-  const detailedSecondaryTotal = blueprint.featureGroups.reduce(
-    (total, group) => total + group.secondaryItemCount,
-    0,
+  const selectedRecommendation = dispatchBoard.recommendations.find(
+    (recommendation) => recommendation.workOrderNo === selectedDetail.workOrder.workOrderNo,
   )
+  const detailedSecondaryTotal = blueprint.featureGroups.reduce((total, group) => total + group.secondaryItemCount, 0)
+
+  async function loadDetail(workOrderNo: string, forceApi = false) {
+    if (source === 'api' || forceApi) {
+      const response = await fetch(`${apiBase}/api/operations/work-orders/${workOrderNo}`)
+      if (response.ok) {
+        setSelectedDetail((await response.json()) as WorkOrderDetail)
+        return
+      }
+    }
+
+    const order = dispatchBoard.workOrders.find((item) => item.workOrderNo === workOrderNo)
+    if (order) {
+      setSelectedDetail(buildLocalDetail(order))
+    }
+  }
+
+  async function dispatchSelected() {
+    const teamName = selectedRecommendation?.recommendedTeam ?? '综合维修班'
+    if (source === 'api') {
+      const response = await fetch(`${apiBase}/api/operations/work-orders/${selectedDetail.workOrder.workOrderNo}/dispatch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamName, dispatcher: '调度员', remark: '按SLA风险和专业班组派工' }),
+      })
+      if (response.ok) {
+        applyDetail((await response.json()) as WorkOrderDetail)
+        return
+      }
+    }
+
+    applyLocalTransition('派工', '调度员', '按SLA风险和专业班组派工', 'Dispatched', teamName)
+  }
+
+  async function transitionSelected(action: WorkOrderTransitionAction, label: string, nextStatus: WorkOrderStatus) {
+    if (source === 'api') {
+      const response = await fetch(`${apiBase}/api/operations/work-orders/${selectedDetail.workOrder.workOrderNo}/transition`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, operator: '环境监管班组', remark: label }),
+      })
+      if (response.ok) {
+        applyDetail((await response.json()) as WorkOrderDetail)
+        return
+      }
+    }
+
+    applyLocalTransition(label, '环境监管班组', label, nextStatus)
+  }
+
+  function applyLocalTransition(
+    action: string,
+    operator: string,
+    remark: string,
+    nextStatus: WorkOrderStatus,
+    responsibleTeam = selectedDetail.workOrder.responsibleTeam,
+  ) {
+    const updatedOrder = {
+      ...selectedDetail.workOrder,
+      status: nextStatus,
+      responsibleTeam,
+    }
+    const updatedDetail = {
+      ...selectedDetail,
+      workOrder: updatedOrder,
+      timeline: [
+        ...selectedDetail.timeline,
+        {
+          occurredAt: new Date().toISOString(),
+          operator,
+          action,
+          fromStatus: selectedDetail.workOrder.status,
+          toStatus: nextStatus,
+          remark,
+        },
+      ],
+    }
+    applyDetail(updatedDetail)
+  }
+
+  function applyDetail(detail: WorkOrderDetail) {
+    setSelectedDetail(detail)
+    setDispatchBoard((current) => ({
+      ...current,
+      workOrders: current.workOrders.map((order) =>
+        order.workOrderNo === detail.workOrder.workOrderNo ? detail.workOrder : order,
+      ),
+    }))
+  }
 
   return (
     <main className="admin-shell">
@@ -567,7 +709,7 @@ function App() {
           ))}
           <article className="metric-card cyan">
             <span>未闭环工单</span>
-            <strong>{dashboard.openWorkOrders}</strong>
+            <strong>{dispatchBoard.slaRisk.openWorkOrders}</strong>
             <em>待跟踪</em>
           </article>
         </section>
@@ -575,34 +717,83 @@ function App() {
         <section className="content-grid">
           <section className="panel dispatch-panel">
             <PanelHeader title="工单调度中心" meta="按 SLA / 优先级 / 班组负载派工" />
-            <div className="filter-bar">
-              <button type="button">全部</button>
-              <button type="button">待派工</button>
-              <button type="button">超时风险</button>
-              <button type="button">今日到期</button>
-            </div>
-            <div className="dispatch-table">
-              <div className="dispatch-row table-head">
-                <span>工单</span>
-                <span>类型</span>
-                <span>位置</span>
-                <span>班组</span>
-                <span>状态</span>
-                <span>操作</span>
-              </div>
-              {sortedWorkOrders.map((order) => (
-                <div className="dispatch-row" key={order.workOrderNo}>
-                  <div>
-                    <strong>{order.title}</strong>
-                    <small>{order.workOrderNo} / {priorityLabels[order.priority]}</small>
-                  </div>
-                  <span>{order.serviceType}</span>
-                  <span>{order.location.building} · {order.location.room}</span>
-                  <span>{order.responsibleTeam}</span>
-                  <span className={`badge ${order.status}`}>{statusLabels[order.status]}</span>
-                  <button type="button">派工</button>
+            <div className="dispatch-workbench">
+              <section>
+                <h2>工单池</h2>
+                <div className="work-order-list">
+                  {sortedWorkOrders.map((order) => (
+                    <button
+                      className={`work-order-card ${selectedDetail.workOrder.workOrderNo === order.workOrderNo ? 'selected' : ''}`}
+                      key={order.workOrderNo}
+                      type="button"
+                      onClick={() => void loadDetail(order.workOrderNo)}
+                    >
+                      <strong>{order.title}</strong>
+                      <span>{order.workOrderNo} / {priorityLabels[order.priority]} / 状态：{statusLabels[order.status]}</span>
+                      <small>{order.location.building} · {order.location.room}</small>
+                    </button>
+                  ))}
                 </div>
-              ))}
+              </section>
+
+              <section className="recommendation-panel">
+                <h2>派工建议</h2>
+                <strong>{selectedRecommendation?.recommendedTeam ?? '综合维修班'}</strong>
+                <p>{selectedRecommendation?.reason ?? '按工单类型和班组负载推荐'}</p>
+                <button type="button" onClick={() => void dispatchSelected()}>
+                  派工到{selectedRecommendation?.recommendedTeam ?? '综合维修班'}
+                </button>
+              </section>
+
+              <section className="detail-panel">
+                <h2>工单详情</h2>
+                <div className="detail-title">
+                  <strong>{selectedDetail.workOrder.title}</strong>
+                  <span>状态：{statusLabels[selectedDetail.workOrder.status]}</span>
+                </div>
+                <dl className="detail-list">
+                  <div>
+                    <dt>位置</dt>
+                    <dd>{selectedDetail.location.building} · {selectedDetail.location.room}</dd>
+                  </div>
+                  <div>
+                    <dt>BIM</dt>
+                    <dd>{selectedDetail.location.bimElementId}</dd>
+                  </div>
+                  <div>
+                    <dt>SLA</dt>
+                    <dd>SLA 风险：{selectedDetail.slaRiskLevel} / 剩余 {selectedDetail.slaMinutesRemaining} 分钟</dd>
+                  </div>
+                  <div>
+                    <dt>来源</dt>
+                    <dd>{selectedDetail.sourceEvidence.map((evidence) => evidence.featureName).join('、')}</dd>
+                  </div>
+                </dl>
+                <div className="action-bar">
+                  <button type="button" onClick={() => void transitionSelected('Accept', '接单', 'Accepted')}>
+                    接单处理
+                  </button>
+                  <button type="button" onClick={() => void transitionSelected('Suspend', '挂单', 'Suspended')}>
+                    挂单
+                  </button>
+                  <button type="button" onClick={() => void transitionSelected('Complete', '完工', 'PendingAcceptance')}>
+                    完工
+                  </button>
+                </div>
+              </section>
+
+              <section className="timeline-panel">
+                <h2>流转记录</h2>
+                <ol>
+                  {selectedDetail.timeline.map((entry) => (
+                    <li key={`${entry.occurredAt}-${entry.action}-${entry.toStatus}`}>
+                      <strong>{entry.action}</strong>
+                      <span>{entry.operator} · {statusLabels[entry.fromStatus]} → {statusLabels[entry.toStatus]}</span>
+                      <small>{entry.remark}</small>
+                    </li>
+                  ))}
+                </ol>
+              </section>
             </div>
           </section>
 
@@ -644,7 +835,7 @@ function App() {
           <section className="panel team-panel">
             <PanelHeader title="班组负载" meta="辅助派工建议" />
             <div className="team-list">
-              {blueprint.teamLoads.map((team) => (
+              {dispatchBoard.teamLoads.map((team) => (
                 <article className="team-card" key={team.teamName}>
                   <div>
                     <strong>{team.teamName}</strong>
@@ -717,10 +908,6 @@ function App() {
                       <dt>角色</dt>
                       <dd>{system.roles.slice(0, 3).join('、')}</dd>
                     </div>
-                    <div>
-                      <dt>端</dt>
-                      <dd>{system.endpoints.join('、')}</dd>
-                    </div>
                   </dl>
                 </article>
               ))}
@@ -728,7 +915,7 @@ function App() {
           </section>
 
           <section className="panel competitor-panel">
-            <PanelHeader title="竞品功能颗粒度" meta="20 个成熟后勤模块拆成功能对象" />
+            <PanelHeader title="竞品功能颗粒度" meta="成熟后勤模块拆成功能对象" />
             <div className="competitor-grid">
               {blueprint.competitorModules.map((module) => (
                 <article className="competitor-card" key={module.name}>
@@ -777,6 +964,29 @@ function App() {
       </section>
     </main>
   )
+}
+
+function buildLocalDetail(order: WorkOrder): WorkOrderDetail {
+  return {
+    workOrder: order,
+    location: order.location,
+    sourceEvidence: order.serviceType.includes('环境')
+      ? [sourceEvidence[0], sourceEvidence[2]]
+      : [sourceEvidence[0]],
+    timeline: [
+      {
+        occurredAt: order.createdAt,
+        operator: '系统',
+        action: '创建',
+        fromStatus: 'New',
+        toStatus: order.status,
+        remark: '来自一站式服务或监测告警的模拟工单',
+      },
+    ],
+    slaRiskLevel: order.priority === 'Critical' || order.status === 'Escalated' ? 'High' : 'Medium',
+    slaMinutesRemaining: order.workOrderNo === 'WO-20260530-0001' ? 18 : 120,
+    allowedActions: ['Dispatch', 'Accept', 'Suspend', 'Complete'],
+  }
 }
 
 function PanelHeader({ title, meta }: { title: string; meta: string }) {

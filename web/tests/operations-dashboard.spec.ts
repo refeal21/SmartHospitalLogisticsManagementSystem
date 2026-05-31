@@ -13,7 +13,7 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
 
     await expect(page.getByRole('heading', { name: '工单调度中心' })).toBeVisible()
     await expect(page.getByText('WO-20260530-0001')).toBeVisible()
-    await expect(page.getByText('医废暂存间负压异常处置')).toBeVisible()
+    await expect(page.getByText('医废暂存间负压异常处置').first()).toBeVisible()
     await expect(page.getByRole('heading', { name: 'BIM 空间业务定位' })).toBeVisible()
     await expect(page.getByRole('heading', { name: '环境预警池' })).toBeVisible()
     await expect(page.getByRole('heading', { name: '班组负载' })).toBeVisible()
@@ -46,6 +46,28 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
     await expect(page.getByText('基础平台与工作台', { exact: true }).first()).toBeVisible()
     await expect(page.getByText('一站式服务与工单', { exact: true }).first()).toBeVisible()
     await expect(page.getByText('综合管理', { exact: true }).first()).toBeVisible()
+  })
+
+  test('一站式工单调度支持派工、接单和详情追踪', async ({ page }) => {
+    await page.goto('/')
+
+    await expect(page.getByRole('heading', { name: '工单池' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '派工建议' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '工单详情' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '流转记录' })).toBeVisible()
+
+    await page.getByRole('button', { name: /医废暂存间负压异常处置/ }).click()
+    await expect(page.getByText('BIM-LOG-F1-WASTE').first()).toBeVisible()
+    await expect(page.getByText('SLA 风险：High')).toBeVisible()
+    await expect(page.getByText('工单全流程管理').first()).toBeVisible()
+
+    await page.getByRole('button', { name: '派工到环境监管班组' }).click()
+    await expect(page.getByText('状态：已派工', { exact: true })).toBeVisible()
+    await expect(page.locator('.timeline-panel').getByText('派工', { exact: true }).first()).toBeVisible()
+
+    await page.getByRole('button', { name: '接单处理' }).click()
+    await expect(page.getByText('状态：处理中', { exact: true })).toBeVisible()
+    await expect(page.locator('.timeline-panel').getByText('接单', { exact: true }).first()).toBeVisible()
   })
 
   test('移动端不出现横向溢出并保留核心办事入口', async ({ page }) => {

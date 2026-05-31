@@ -12,7 +12,10 @@ public enum WorkOrderStatus
 {
     New,
     Dispatched,
+    Accepted,
     InProgress,
+    Suspended,
+    Transferred,
     PendingAcceptance,
     Closed,
     Escalated
@@ -76,6 +79,18 @@ public sealed record WorkOrder(
     string ResponsibleTeam,
     DateTimeOffset CreatedAt,
     DateTimeOffset SlaDueAt);
+
+public enum WorkOrderTransitionAction
+{
+    Accept,
+    Suspend,
+    Transfer,
+    Complete,
+    AcceptCompletion,
+    RejectCompletion,
+    Evaluate,
+    Escalate
+}
 
 public sealed record EnvironmentSignal(
     string SignalCode,
@@ -142,6 +157,63 @@ public sealed record TeamLoad(
     int ActiveTasks,
     int Capacity,
     string Recommendation);
+
+public sealed record DispatchWorkOrderCommand(
+    string TeamName,
+    string Dispatcher,
+    string Remark);
+
+public sealed record TransitionWorkOrderCommand(
+    WorkOrderTransitionAction Action,
+    string Operator,
+    string Remark,
+    string? TargetTeam = null,
+    int? Rating = null);
+
+public sealed record WorkOrderTimelineEntry(
+    DateTimeOffset OccurredAt,
+    string Operator,
+    string Action,
+    WorkOrderStatus FromStatus,
+    WorkOrderStatus ToStatus,
+    string Remark,
+    int? Rating = null);
+
+public sealed record DispatchRecommendation(
+    string WorkOrderNo,
+    string RecommendedTeam,
+    string Reason,
+    Priority Priority,
+    int SlaMinutesRemaining);
+
+public sealed record SlaRiskSummary(
+    int OpenWorkOrders,
+    int OverdueWorkOrders,
+    int DueSoonWorkOrders,
+    int EscalatedWorkOrders,
+    string HighestRiskLevel,
+    string? HighestRiskWorkOrderNo);
+
+public sealed record WorkOrderDetail(
+    WorkOrder WorkOrder,
+    SpatialLocation Location,
+    IReadOnlyList<FeatureEvidence> SourceEvidence,
+    IReadOnlyList<WorkOrderTimelineEntry> Timeline,
+    string SlaRiskLevel,
+    int SlaMinutesRemaining,
+    IReadOnlyList<string> AllowedActions);
+
+public sealed record DispatchBoard(
+    IReadOnlyList<WorkOrder> WorkOrders,
+    IReadOnlyList<TeamLoad> TeamLoads,
+    IReadOnlyList<DispatchRecommendation> Recommendations,
+    SlaRiskSummary SlaRisk);
+
+public sealed record DispatchOperationResult(
+    bool Succeeded,
+    string? ErrorMessage,
+    WorkOrderDetail? Detail,
+    bool NotFound = false);
 
 public sealed record FeatureEvidence(
     string FeatureName,

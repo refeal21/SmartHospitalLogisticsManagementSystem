@@ -255,6 +255,144 @@ button {
   cursor: pointer;
 }
 
+.dispatch-workbench {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(220px, 0.7fr) minmax(320px, 1fr) minmax(260px, 0.8fr);
+  gap: 10px;
+}
+
+.dispatch-workbench h2 {
+  margin-bottom: 8px;
+}
+
+.work-order-list {
+  display: grid;
+  gap: 8px;
+}
+
+.work-order-card {
+  width: 100%;
+  display: grid;
+  gap: 5px;
+  text-align: left;
+  color: #183752;
+  background: #ffffff;
+  border-color: #d8e6f0;
+}
+
+.work-order-card.selected {
+  border-color: #1f74b7;
+  box-shadow: 0 0 0 2px rgba(31, 116, 183, 0.1);
+}
+
+.work-order-card strong,
+.work-order-card span,
+.work-order-card small {
+  display: block;
+}
+
+.work-order-card span,
+.work-order-card small {
+  color: #637a8f;
+  font-size: 12px;
+}
+
+.recommendation-panel,
+.detail-panel,
+.timeline-panel {
+  border: 1px solid #e0eaf2;
+  border-radius: 5px;
+  padding: 10px;
+  background: #fbfdff;
+}
+
+.recommendation-panel {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.recommendation-panel p {
+  color: #62798e;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.detail-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.detail-title span {
+  border-radius: 999px;
+  background: #e8f3fb;
+  color: #12649b;
+  padding: 4px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.detail-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.detail-list div {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.detail-list dt {
+  color: #1d6da8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.detail-list dd {
+  margin: 0;
+  color: #526b82;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.timeline-panel ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline-panel li {
+  border-left: 3px solid #1f74b7;
+  background: #ffffff;
+  padding: 7px 8px;
+}
+
+.timeline-panel strong,
+.timeline-panel span,
+.timeline-panel small {
+  display: block;
+}
+
+.timeline-panel span,
+.timeline-panel small {
+  color: #647b90;
+  font-size: 12px;
+}
+
 .dispatch-table {
   display: grid;
   gap: 6px;
@@ -649,6 +787,10 @@ button {
     grid-template-columns: 1fr;
   }
 
+  .dispatch-workbench {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .dispatch-panel,
   .module-panel,
   .workflow-panel,
@@ -697,7 +839,8 @@ button {
   }
 
   .dispatch-row,
-  .alert-item {
+  .alert-item,
+  .dispatch-workbench {
     grid-template-columns: 1fr;
   }
 

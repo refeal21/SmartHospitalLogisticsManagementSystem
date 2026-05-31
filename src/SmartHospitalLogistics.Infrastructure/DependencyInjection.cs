@@ -8,6 +8,7 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
         services.AddSingleton<IOperationsDashboardService, OperationsDashboardService>();
+        services.AddSingleton<IWorkOrderDispatchService, WorkOrderDispatchService>();
         return services;
     }
 }

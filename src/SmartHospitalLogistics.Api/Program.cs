@@ -1,4 +1,5 @@
 using SmartHospitalLogistics.Application;
+using SmartHospitalLogistics.Domain;
 using SmartHospitalLogistics.Infrastructure;
 using System.Text.Json.Serialization;
 
@@ -40,10 +41,53 @@ logistics.MapGet("/blueprint", (IOperationsDashboardService service) => service.
 api.MapGet("/dashboard", (IOperationsDashboardService service) => service.GetDashboard())
     .WithName("GetOperationsDashboard");
 
+api.MapGet("/dispatch-board", (IWorkOrderDispatchService service) => service.GetDispatchBoard())
+    .WithName("GetDispatchBoard");
+
 api.MapGet("/work-orders/active", (IOperationsDashboardService service) => service.GetActiveWorkOrders())
     .WithName("GetActiveWorkOrders");
+
+api.MapGet("/work-orders/{workOrderNo}", (string workOrderNo, IWorkOrderDispatchService service) =>
+    service.GetWorkOrderDetail(workOrderNo) is { } detail
+        ? Results.Ok(detail)
+        : Results.NotFound(new { error = $"Work order {workOrderNo} was not found." }))
+    .WithName("GetWorkOrderDetail");
+
+api.MapPost("/work-orders/{workOrderNo}/dispatch", (
+        string workOrderNo,
+        DispatchWorkOrderCommand command,
+        IWorkOrderDispatchService service) =>
+    {
+        var result = service.Dispatch(workOrderNo, command);
+        return ToHttpResult(result);
+    })
+    .WithName("DispatchWorkOrder");
+
+api.MapPost("/work-orders/{workOrderNo}/transition", (
+        string workOrderNo,
+        TransitionWorkOrderCommand command,
+        IWorkOrderDispatchService service) =>
+    {
+        var result = service.Transition(workOrderNo, command);
+        return ToHttpResult(result);
+    })
+    .WithName("TransitionWorkOrder");
 
 api.MapGet("/assets/risk", (IOperationsDashboardService service) => service.GetRiskAssets())
     .WithName("GetRiskAssets");
 
 app.Run();
+
+static IResult ToHttpResult(DispatchOperationResult result)
+{
+    if (result.Succeeded && result.Detail is not null)
+    {
+        return Results.Ok(result.Detail);
+    }
+
+    return result.NotFound
+        ? Results.NotFound(new { error = result.ErrorMessage })
+        : Results.BadRequest(new { error = result.ErrorMessage });
+}
+
+public partial class Program;

@@ -21,26 +21,27 @@ public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
 {
     private static readonly DateTimeOffset SeedTime = new(2026, 5, 30, 9, 30, 0, TimeSpan.FromHours(8));
     private readonly object _sync = new();
+    private readonly IWorkOrderPersistence? _persistence;
     private readonly List<WorkOrder> _workOrders;
     private readonly List<ServiceRequest> _serviceRequests;
     private readonly List<TeamLoad> _teamLoads;
     private readonly Dictionary<string, List<WorkOrderTimelineEntry>> _timeline;
 
-    public WorkOrderDispatchService()
+    public WorkOrderDispatchService(IWorkOrderPersistence? persistence = null)
     {
+        _persistence = persistence;
         var outpatientLobby = new SpatialLocation("同仁亦庄院区", "门诊医技楼", "F1", "共享大厅", "BIM-OPD-F1-LOBBY");
         var inpatientWard = new SpatialLocation("同仁亦庄院区", "住院楼", "F8", "眼科病区", "BIM-IPD-F8-WARD");
         var energyRoom = new SpatialLocation("同仁亦庄院区", "能源中心", "B1", "冷站机房", "BIM-ENE-B1-CHILLER");
         var wasteRoom = new SpatialLocation("同仁亦庄院区", "后勤楼", "F1", "医废暂存间", "BIM-LOG-F1-WASTE");
 
-        _workOrders =
-        [
+        var seedWorkOrders = new List<WorkOrder>
+        {
             new WorkOrder("WO-20260530-0001", "医废暂存间负压异常处置", "环境应急", Priority.Critical, WorkOrderStatus.Escalated, wasteRoom, "未派工", SeedTime.AddMinutes(-42), SeedTime.AddMinutes(18)),
             new WorkOrder("WO-20260530-0002", "门诊大厅医梯运行异响巡检", "设备维修", Priority.High, WorkOrderStatus.Dispatched, outpatientLobby, "电梯维保组", SeedTime.AddMinutes(-26), SeedTime.AddHours(2)),
             new WorkOrder("WO-20260530-0003", "眼科病区被服补给", "后勤配送", Priority.Normal, WorkOrderStatus.Accepted, inpatientWard, "被服配送组", SeedTime.AddMinutes(-18), SeedTime.AddHours(3)),
             new WorkOrder("WO-20260530-0004", "冷站机房夜间节能策略复核", "能耗优化", Priority.Normal, WorkOrderStatus.PendingAcceptance, energyRoom, "能源管理组", SeedTime.AddHours(-4), SeedTime.AddHours(4))
-        ];
-        _serviceRequests = [];
+        };
 
         _teamLoads =
         [
@@ -50,12 +51,23 @@ public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
             new TeamLoad("能源管理组", "基础运行", 9, 16, "适合承接夜间节能策略复核")
         ];
 
-        _timeline = _workOrders.ToDictionary(
-            order => order.WorkOrderNo,
-            order => new List<WorkOrderTimelineEntry>
-            {
-                new(order.CreatedAt, "系统", "创建", WorkOrderStatus.New, order.Status, "来自一站式服务或监测告警的模拟工单")
-            });
+        var persisted = _persistence?.Load();
+        if (persisted is not null && (persisted.WorkOrders.Count > 0 || persisted.ServiceRequests.Count > 0))
+        {
+            _workOrders = persisted.WorkOrders.ToList();
+            _serviceRequests = persisted.ServiceRequests.ToList();
+            _timeline = persisted.Timeline.ToDictionary(
+                item => item.Key,
+                item => item.Value.ToList(),
+                StringComparer.OrdinalIgnoreCase);
+        }
+        else
+        {
+            _workOrders = seedWorkOrders;
+            _serviceRequests = [];
+            _timeline = BuildSeedTimeline(_workOrders);
+            PersistSeedData();
+        }
     }
 
     public DispatchBoard GetDispatchBoard()
@@ -106,8 +118,10 @@ public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
                 Status = WorkOrderStatus.Dispatched,
                 ResponsibleTeam = command.TeamName
             };
+            var timelineEntry = BuildTimelineEntry(updated.WorkOrderNo, command.Dispatcher, "派工", current.Status, updated.Status, command.Remark);
+            _persistence?.SaveWorkOrderTransition(updated, timelineEntry);
             _workOrders[index] = updated;
-            AddTimeline(updated.WorkOrderNo, command.Dispatcher, "派工", current.Status, updated.Status, command.Remark);
+            AddTimelineEntry(updated.WorkOrderNo, timelineEntry);
 
             return new DispatchOperationResult(true, null, BuildDetail(updated));
         }
@@ -129,8 +143,10 @@ public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
                 return new DispatchOperationResult(false, errorMessage, BuildDetail(current));
             }
 
+            var timelineEntry = BuildTimelineEntry(updated.WorkOrderNo, command.Operator, actionName, current.Status, updated.Status, command.Remark, command.Rating);
+            _persistence?.SaveWorkOrderTransition(updated, timelineEntry);
             _workOrders[index] = updated;
-            AddTimeline(updated.WorkOrderNo, command.Operator, actionName, current.Status, updated.Status, command.Remark, command.Rating);
+            AddTimelineEntry(updated.WorkOrderNo, timelineEntry);
 
             return new DispatchOperationResult(true, null, BuildDetail(updated));
         }
@@ -154,6 +170,7 @@ public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
                 SeedTime.AddDays(1).AddMinutes(_serviceRequests.Count),
                 null);
 
+            _persistence?.SaveServiceRequest(request);
             _serviceRequests.Add(request);
             return request;
         }
@@ -189,23 +206,22 @@ public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
                 request.CreatedAt,
                 request.CreatedAt.AddHours(request.Priority is Priority.Critical ? 1 : 2));
 
-            _workOrders.Add(workOrder);
-            _timeline[workOrder.WorkOrderNo] =
-            [
-                new WorkOrderTimelineEntry(
-                    request.CreatedAt,
-                    command.AcceptedBy,
-                    "受理建单",
-                    WorkOrderStatus.New,
-                    WorkOrderStatus.New,
-                    command.Remark)
-            ];
-
             var convertedRequest = request with
             {
                 Status = ServiceRequestStatus.Converted,
                 ConvertedWorkOrderNo = workOrder.WorkOrderNo
             };
+            var timelineEntry = new WorkOrderTimelineEntry(
+                request.CreatedAt,
+                command.AcceptedBy,
+                "受理建单",
+                WorkOrderStatus.New,
+                WorkOrderStatus.New,
+                command.Remark);
+
+            _persistence?.SaveServiceRequestConversion(convertedRequest, workOrder, timelineEntry);
+            _workOrders.Add(workOrder);
+            _timeline[workOrder.WorkOrderNo] = [timelineEntry];
             _serviceRequests[requestIndex] = convertedRequest;
 
             return new ServiceRequestConversionResult(true, null, convertedRequest, BuildDetail(workOrder));
@@ -273,7 +289,7 @@ public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
             order,
             order.Location,
             BuildSourceEvidence(order),
-            _timeline[order.WorkOrderNo].ToArray(),
+            _timeline.TryGetValue(order.WorkOrderNo, out var timeline) ? timeline.ToArray() : [],
             SlaRiskLevel(order),
             SlaMinutesRemaining(order),
             AllowedActions(order).ToArray());
@@ -375,7 +391,7 @@ public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
     private static int SlaMinutesRemaining(WorkOrder order) =>
         (int)Math.Round((order.SlaDueAt - SeedTime).TotalMinutes);
 
-    private void AddTimeline(
+    private WorkOrderTimelineEntry BuildTimelineEntry(
         string workOrderNo,
         string operatorName,
         string action,
@@ -384,13 +400,55 @@ public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
         string remark,
         int? rating = null)
     {
-        _timeline[workOrderNo].Add(new WorkOrderTimelineEntry(
-            SeedTime.AddMinutes(_timeline[workOrderNo].Count * 3),
+        var entryCount = _timeline.TryGetValue(workOrderNo, out var entries) ? entries.Count : 0;
+        return new WorkOrderTimelineEntry(
+            SeedTime.AddMinutes(entryCount * 3),
             operatorName,
             action,
             fromStatus,
             toStatus,
             remark,
-            rating));
+            rating);
+    }
+
+    private void AddTimelineEntry(string workOrderNo, WorkOrderTimelineEntry entry)
+    {
+        if (!_timeline.TryGetValue(workOrderNo, out var entries))
+        {
+            entries = [];
+            _timeline[workOrderNo] = entries;
+        }
+
+        entries.Add(entry);
+    }
+
+    private static Dictionary<string, List<WorkOrderTimelineEntry>> BuildSeedTimeline(IEnumerable<WorkOrder> workOrders) =>
+        workOrders.ToDictionary(
+            order => order.WorkOrderNo,
+            order => new List<WorkOrderTimelineEntry>
+            {
+                new(order.CreatedAt, "系统", "创建", WorkOrderStatus.New, order.Status, "来自一站式服务或监测告警的模拟工单")
+            },
+            StringComparer.OrdinalIgnoreCase);
+
+    private void PersistSeedData()
+    {
+        if (_persistence is null)
+        {
+            return;
+        }
+
+        foreach (var order in _workOrders)
+        {
+            _persistence.SaveWorkOrder(order);
+        }
+
+        foreach (var (workOrderNo, entries) in _timeline)
+        {
+            foreach (var entry in entries)
+            {
+                _persistence.SaveTimelineEntry(workOrderNo, entry);
+            }
+        }
     }
 }

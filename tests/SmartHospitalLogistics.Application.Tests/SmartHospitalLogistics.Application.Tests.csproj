@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\src\SmartHospitalLogistics.Application\SmartHospitalLogistics.Application.csproj" />
     <ProjectReference Include="..\..\src\SmartHospitalLogistics.Api\SmartHospitalLogistics.Api.csproj" />
     <ProjectReference Include="..\..\src\SmartHospitalLogistics.Domain\SmartHospitalLogistics.Domain.csproj" />
+    <ProjectReference Include="..\..\src\SmartHospitalLogistics.Infrastructure\SmartHospitalLogistics.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

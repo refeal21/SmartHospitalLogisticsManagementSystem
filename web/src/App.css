@@ -246,6 +246,7 @@ h2 {
 .content-grid[data-active-page='iot'] > .panel,
 .content-grid[data-active-page='alerts'] > .panel,
 .content-grid[data-active-page='medicalGas'] > .panel,
+.content-grid[data-active-page='powerDistribution'] > .panel,
 .content-grid[data-active-page='spatial'] > .panel,
 .content-grid[data-active-page='evidence'] > .panel {
   display: none;
@@ -257,6 +258,7 @@ h2 {
 .content-grid[data-active-page='alerts'] > .alert-panel,
 .content-grid[data-active-page='alerts'] > .team-panel,
 .content-grid[data-active-page='medicalGas'] > .medical-gas-panel,
+.content-grid[data-active-page='powerDistribution'] > .power-distribution-panel,
 .content-grid[data-active-page='spatial'] > .spatial-panel,
 .content-grid[data-active-page='spatial'] > .alert-panel,
 .content-grid[data-active-page='spatial'] > .team-panel,
@@ -278,6 +280,7 @@ h2 {
 .asset-maintenance-panel,
 .iot-panel,
 .medical-gas-panel,
+.power-distribution-panel,
 .spatial-panel,
 .alert-panel,
 .module-panel,
@@ -1422,6 +1425,7 @@ button {
 
   .dispatch-panel,
   .medical-gas-panel,
+  .power-distribution-panel,
   .spatial-panel,
   .alert-panel,
   .module-panel,

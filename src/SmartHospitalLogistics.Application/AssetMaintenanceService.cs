@@ -38,6 +38,7 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
             _plans = persisted.Plans.ToDictionary(plan => plan.PlanCode, StringComparer.OrdinalIgnoreCase);
             _tasks = persisted.Tasks.ToDictionary(task => task.TaskNo, StringComparer.OrdinalIgnoreCase);
             _lifecycleEvents = persisted.LifecycleEvents.ToList();
+            MergeMissingSeedData();
         }
         else
         {
@@ -46,6 +47,49 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
             _tasks = BuildTasks().ToDictionary(task => task.TaskNo, StringComparer.OrdinalIgnoreCase);
             _lifecycleEvents = BuildLifecycleEvents().ToList();
             PersistSeedData();
+        }
+    }
+
+    private void MergeMissingSeedData()
+    {
+        foreach (var asset in BuildAssets())
+        {
+            if (_assets.TryAdd(asset.AssetCode, asset))
+            {
+                _persistence?.SaveAsset(asset);
+            }
+        }
+
+        foreach (var plan in BuildPlans())
+        {
+            if (_plans.TryAdd(plan.PlanCode, plan))
+            {
+                _persistence?.SavePlan(plan);
+            }
+        }
+
+        foreach (var task in BuildTasks())
+        {
+            if (_tasks.TryAdd(task.TaskNo, task))
+            {
+                _persistence?.SaveTask(task);
+            }
+        }
+
+        foreach (var lifecycleEvent in BuildLifecycleEvents())
+        {
+            if (_lifecycleEvents.Any(item =>
+                item.AssetCode == lifecycleEvent.AssetCode &&
+                item.OccurredAt == lifecycleEvent.OccurredAt &&
+                item.EventType == lifecycleEvent.EventType &&
+                item.Operator == lifecycleEvent.Operator &&
+                item.Summary == lifecycleEvent.Summary))
+            {
+                continue;
+            }
+
+            _lifecycleEvents.Add(lifecycleEvent);
+            _persistence?.SaveLifecycleEvent(lifecycleEvent);
         }
     }
 
@@ -209,6 +253,7 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
         var outpatientLobby = new SpatialLocation("同仁亦庄院区", "门诊医技楼", "F1", "共享大厅", "BIM-OPD-F1-LOBBY");
         var inpatientWard = new SpatialLocation("同仁亦庄院区", "住院楼", "F8", "眼科病区", "BIM-IPD-F8-WARD");
         var energyRoom = new SpatialLocation("同仁亦庄院区", "能源中心", "B1", "冷站机房", "BIM-ENE-B1-CHILLER");
+        var powerRoom = new SpatialLocation("同仁亦庄院区", "能源中心", "B1", "变配电室", "BIM-ENE-B1-PDU");
         var wasteRoom = new SpatialLocation("同仁亦庄院区", "后勤楼", "F1", "医废暂存间", "BIM-LOG-F1-WASTE");
 
         return
@@ -242,6 +287,21 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
                 "周巡检 + 压力异常闭环",
                 68,
                 "计划保养中，需关注氧气压力波动",
+                ["北建院", "中科医信", "PPT"]),
+            new AssetLedgerItem(
+                "PWR-LV-B1-IN-CAB",
+                "B1 低压进线柜",
+                "供配电/强电",
+                AssetCriticality.LifeSafety,
+                powerRoom,
+                FacilityStatus.Warning,
+                "电工班工作人员",
+                "Mock厂商",
+                "LV-IN-01",
+                "2021-03-18",
+                "日巡检 + 电压电流阈值告警转工单",
+                76,
+                "低压进线电压需关注越限、谐波和功率因数异常",
                 ["北建院", "中科医信", "PPT"]),
             new AssetLedgerItem(
                 "CHW-B1-02",
@@ -306,6 +366,20 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
                 [
                     new InspectionChecklistItem("CHK-PRESSURE", "氧气压力", "压力在上下限范围内", true),
                     new InspectionChecklistItem("CHK-VALVE", "阀门状态", "阀门开闭和标识正常", true)
+                ],
+                sourceEvidence),
+            new MaintenancePlan(
+                "MP-PWR-LV-IN",
+                "PWR-LV-B1-IN-CAB",
+                "B1 低压进线柜运行巡检",
+                MaintenanceTaskType.SafetyCheck,
+                1,
+                SeedTime.AddHours(1),
+                "电工班工作人员",
+                [
+                    new InspectionChecklistItem("CHK-VOLTAGE", "三相电压", "电压在安全范围内且无缺相", true),
+                    new InspectionChecklistItem("CHK-CURRENT", "进线电流", "电流负荷无异常突增", true),
+                    new InspectionChecklistItem("CHK-HARMONIC", "谐波与功率因数", "谐波和功率因数处于可接受范围", true)
                 ],
                 sourceEvidence),
             new MaintenancePlan(
@@ -376,6 +450,18 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
             "暖通班工作人员",
             []),
         new MaintenanceTask(
+            "MT-20260530-0005",
+            "MP-PWR-LV-IN",
+            "PWR-LV-B1-IN-CAB",
+            "B1 低压进线柜运行巡检",
+            MaintenanceTaskType.SafetyCheck,
+            MaintenanceTaskStatus.Due,
+            Priority.High,
+            SeedTime.AddMinutes(-12),
+            SeedTime.AddHours(1),
+            "电工班工作人员",
+            []),
+        new MaintenanceTask(
             "MT-20260530-0004",
             "MP-ELV-MONTHLY",
             "ELV-OPD-01",
@@ -394,6 +480,7 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
         new AssetLifecycleEvent(SeedTime.AddDays(-6), "MEDGAS-IPD-8F", "计划保养", "医气维保人员", "完成分区阀箱压力表校准"),
         new AssetLifecycleEvent(SeedTime.AddDays(-4), "ELV-OPD-01", "运行预警", "电梯维保组", "运行频次高于日均值，列入提前巡检"),
         new AssetLifecycleEvent(SeedTime.AddDays(-2), "CHW-B1-02", "能耗复核", "暖通班工作人员", "夜间节能策略复核通过"),
+        new AssetLifecycleEvent(SeedTime.AddDays(-1), "PWR-LV-B1-IN-CAB", "强电巡检", "电工班工作人员", "完成低压进线柜三相电压和功率因数核查"),
         new AssetLifecycleEvent(SeedTime.AddHours(-3), "WASTE-F1-01", "告警联动", "环境监管班组", "医废暂存间负压低于阈值，已进入预警池")
     ];
 
@@ -411,6 +498,10 @@ public sealed class AssetMaintenanceService : IAssetMaintenanceService
             "医用气体监测",
             ["北建院", "中科医信", "PPT"],
             "客户数据、竞品功能和 PPT 均涉及医用气体压力、阀箱、报警处置和维修闭环。"),
+        new FeatureEvidence(
+            "供配电监测",
+            ["北建院", "中科医信", "PPT"],
+            "客户强电数据包含电压、电流、有功功率、功率因数、频率、电度和谐波字段；竞品功能树包含供配电监测；PPT 要求基础运行系统与 BIM 运维联动。"),
         new FeatureEvidence(
             "可视化空间运维",
             ["中科医信", "PPT"],

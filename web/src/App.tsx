@@ -465,6 +465,52 @@ type MedicalGasZoneDetail = {
   sourceEvidence: FeatureEvidence[]
 }
 
+type PowerDistributionCircuitStatus = 'Normal' | 'Warning' | 'Critical' | 'Maintenance'
+
+type PowerDistributionCircuit = {
+  circuitCode: string
+  name: string
+  system: string
+  location: SpatialLocation
+  responsibleTeam: string
+  meterPointCode: string
+  assetCode: string
+  status: PowerDistributionCircuitStatus
+  monitoredMetrics: string[]
+  riskSummary: string
+  sourceEvidence: FeatureEvidence[]
+}
+
+type PowerDistributionBoardKpi = {
+  circuitCount: number
+  abnormalCircuits: number
+  activeAlarms: number
+  openWorkOrders: number
+  dueMaintenanceTasks: number
+}
+
+type PowerDistributionBoard = {
+  generatedAt: string
+  circuits: PowerDistributionCircuit[]
+  monitoringPoints: IotMonitoringPoint[]
+  electricalAssets: AssetLedgerItem[]
+  activeAlarms: MonitoringAlarmEvent[]
+  openWorkOrders: WorkOrder[]
+  dueMaintenanceTasks: MaintenanceTask[]
+  sourceEvidence: FeatureEvidence[]
+  kpis: PowerDistributionBoardKpi
+}
+
+type PowerDistributionCircuitDetail = {
+  circuit: PowerDistributionCircuit
+  monitoringPoint?: IotPointDetail | null
+  electricalAsset?: AssetMaintenanceDetail | null
+  activeAlarms: MonitoringAlarmEvent[]
+  openWorkOrders: WorkOrder[]
+  maintenanceTasks: MaintenanceTask[]
+  sourceEvidence: FeatureEvidence[]
+}
+
 type SpatialPointKind = 'workOrder' | 'asset' | 'alarm' | 'iot'
 type SpatialPointTone = 'workorder' | 'asset' | 'alert' | 'normal'
 
@@ -491,7 +537,16 @@ type TelemetryIngestionResult = {
   notFound: boolean
 }
 
-type WorkspacePage = 'overview' | 'dispatch' | 'assets' | 'iot' | 'alerts' | 'medicalGas' | 'spatial' | 'evidence'
+type WorkspacePage =
+  | 'overview'
+  | 'dispatch'
+  | 'assets'
+  | 'iot'
+  | 'alerts'
+  | 'medicalGas'
+  | 'powerDistribution'
+  | 'spatial'
+  | 'evidence'
 
 const locations = {
   lobby: {
@@ -521,6 +576,13 @@ const locations = {
     floor: 'B1',
     room: '冷站机房',
     bimElementId: 'BIM-ENE-B1-CHILLER',
+  },
+  power: {
+    campus: '同仁亦庄院区',
+    building: '能源中心',
+    floor: 'B1',
+    room: '变配电室',
+    bimElementId: 'BIM-ENE-B1-PDU',
   },
 }
 
@@ -607,7 +669,7 @@ const localBlueprint: LogisticsBlueprint = {
   navigationGroups: [
     { code: 'WORKBENCH', name: '运营工作台', items: ['后勤首页', '待办中心', '风险告警'] },
     { code: 'SERVICE', name: '一站式服务', items: ['服务受理', '工单调度', '任务执行', '验收回访', '服务评价'] },
-    { code: 'FACILITY', name: '设备设施', items: ['设备台账', '巡检保养', '维修记录', '备件库存', '电梯专项', '暖通/给排水/医气专项'] },
+    { code: 'FACILITY', name: '设备设施', items: ['设备台账', '巡检保养', '维修记录', '备件库存', '电梯专项', '供配电专项', '暖通/给排水/医气专项'] },
     { code: 'SPATIAL', name: 'BIM 空间', items: ['空间台账', '楼层视图', '设备点位', '告警点位', '工单点位'] },
     { code: 'ENVIRONMENT', name: '环境监管', items: ['环境点位', '预警池', '报警策略', '医废处置', '智慧卫生间'] },
     { code: 'MANAGEMENT', name: '综合管理', items: ['质量标准', '合同管理', '考核管理', '人员班组', '运营分析', '能耗成本'] },
@@ -943,7 +1005,7 @@ const localIotCatalog: IotIntegrationCatalog = {
       pointCode: 'PWR-LV-B1-IN-01',
       name: 'B1 低压进线柜多功能电表',
       category: 'StrongElectric',
-      location: locations.energy,
+      location: locations.power,
       deviceCode: 'METER-LV-001',
       protocolAdapter: 'modbus-adapter',
       metrics: [
@@ -955,6 +1017,16 @@ const localIotCatalog: IotIntegrationCatalog = {
     },
   ],
   thresholdRules: [
+    {
+      pointCode: 'PWR-LV-B1-IN-01',
+      metricCode: 'voltage',
+      direction: 'OutsideRange',
+      warningMin: 200,
+      warningMax: 245,
+      criticalMin: 190,
+      criticalMax: 255,
+      ruleSummary: '低压进线电压需保持在安全范围',
+    },
     {
       pointCode: 'MEDGAS-O2-8F',
       metricCode: 'pressure',
@@ -1062,6 +1134,82 @@ const localMedicalGasBoard: MedicalGasBoard = {
   },
 }
 
+const powerDistributionSourceEvidence: FeatureEvidence[] = [
+  {
+    featureName: '供配电/强电专项运行',
+    sources: ['北建院', '中科医信', 'PPT'],
+    evidenceSummary: '北建院客户数据定义强电系统、点位、采集字段和角色；中科医信竞品包含供配电监测；PPT 定义 BIM 智慧运维集成边界。',
+  },
+  {
+    featureName: '强电告警巡检工单闭环',
+    sources: ['北建院', '中科医信', 'PPT'],
+    evidenceSummary: '电压、电流、功率、功率因数、频率、电度和谐波读数必须联动预警池、低压配电资产、巡检任务和工单调度。',
+  },
+]
+
+const localPowerAsset: AssetLedgerItem = {
+  assetCode: 'PWR-LV-B1-IN-CAB',
+  name: 'B1 低压进线柜',
+  system: '供配电/强电',
+  criticality: 'LifeSafety',
+  location: locations.power,
+  status: 'Warning',
+  ownerTeam: '电工班工作人员',
+  manufacturer: 'Mock厂商',
+  model: 'LV-IN-01',
+  commissionedOn: '2021-03-18',
+  maintenanceStrategy: '日巡检 + 电压电流阈值告警转工单',
+  healthScore: 76,
+  currentRisk: '低压进线电压需关注越限、谐波和功率因数异常',
+  sourceTags: ['北建院', '中科医信', 'PPT'],
+}
+
+const localPowerTask: MaintenanceTask = {
+  taskNo: 'MT-20260530-0005',
+  planCode: 'MP-PWR-LV-IN',
+  assetCode: 'PWR-LV-B1-IN-CAB',
+  title: 'B1 低压进线柜运行巡检',
+  taskType: 'SafetyCheck',
+  status: 'Due',
+  priority: 'High',
+  scheduledAt: '2026-05-30T09:18:00+08:00',
+  dueAt: '2026-05-30T10:30:00+08:00',
+  responsibleTeam: '电工班工作人员',
+  checklistResults: [],
+}
+
+const localPowerDistributionBoard: PowerDistributionBoard = {
+  generatedAt: '2026-05-30T09:30:00+08:00',
+  circuits: [
+    {
+      circuitCode: 'PWR-CIRCUIT-B1-LV-IN',
+      name: 'B1 低压进线柜主进线回路',
+      system: '供配电/强电',
+      location: locations.power,
+      responsibleTeam: '电工班工作人员',
+      meterPointCode: 'PWR-LV-B1-IN-01',
+      assetCode: 'PWR-LV-B1-IN-CAB',
+      status: 'Warning',
+      monitoredMetrics: ['voltage', 'current', 'active_power', 'power_factor', 'frequency', 'kwh', 'harmonic'],
+      riskSummary: '低压进线电压、电流、功率因数和谐波需要按阈值预警，并联动配电柜巡检与一站式工单调度。',
+      sourceEvidence: powerDistributionSourceEvidence,
+    },
+  ],
+  monitoringPoints: localIotCatalog.points.filter((point) => point.pointCode === 'PWR-LV-B1-IN-01'),
+  electricalAssets: [localPowerAsset],
+  activeAlarms: [],
+  openWorkOrders: [],
+  dueMaintenanceTasks: [localPowerTask],
+  sourceEvidence: powerDistributionSourceEvidence,
+  kpis: {
+    circuitCount: 1,
+    abnormalCircuits: 1,
+    activeAlarms: 0,
+    openWorkOrders: 0,
+    dueMaintenanceTasks: 1,
+  },
+}
+
 const statusLabels: Record<WorkOrderStatus | FacilityStatus | SignalStatus, string> = {
   New: '新建',
   Dispatched: '已派工',
@@ -1138,6 +1286,13 @@ const medicalGasStatusLabels: Record<MedicalGasZoneStatus, string> = {
   Maintenance: '保养中',
 }
 
+const powerDistributionStatusLabels: Record<PowerDistributionCircuitStatus, string> = {
+  Normal: '正常',
+  Warning: '预警',
+  Critical: '严重',
+  Maintenance: '保养中',
+}
+
 const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = {
   overview: {
     title: '后勤运营总览',
@@ -1163,6 +1318,10 @@ const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = 
     title: '医用气体专项工作台',
     summary: '聚合医气分区、氧气压力点位、分区阀箱、巡检任务、物联告警和工单调度，先把一个高风险专项做成真实业务闭环。',
   },
+  powerDistribution: {
+    title: '供配电/强电专项工作台',
+    summary: '聚合低压进线回路、电表点位、配电柜资产、巡检任务、电压告警和工单调度，让强电运行进入可追溯闭环。',
+  },
   spatial: {
     title: 'BIM 空间运维工作台',
     summary: '聚焦空间定位：设备、告警、工单和班组负载在同一空间语境里联动。',
@@ -1180,7 +1339,17 @@ const spatialMenuItems = ['空间台账', '楼层视图', '设备点位', '告�
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5248'
 
 function pageFromMenuItem(item: string): WorkspacePage {
-  if (item.toLowerCase().includes('medical-gas') || item.includes('医气') || item.includes('医用气体') || item.includes('鍖绘皵')) {
+  const normalized = item.toLowerCase()
+  if (
+    normalized.includes('power-distribution') ||
+    normalized.includes('pwr') ||
+    item.includes('供配电') ||
+    item.includes('强电')
+  ) {
+    return 'powerDistribution'
+  }
+
+  if (normalized.includes('medical-gas') || item.includes('医气') || item.includes('医用气体') || item.includes('鍖绘皵')) {
     return 'medicalGas'
   }
 
@@ -1273,6 +1442,11 @@ function App() {
   const [medicalGasBoard, setMedicalGasBoard] = useState(localMedicalGasBoard)
   const [medicalGasZoneDetail, setMedicalGasZoneDetail] = useState(() => buildLocalMedicalGasDetail('MG-ZONE-IPD-8F'))
   const [convertedMedicalGasDetail, setConvertedMedicalGasDetail] = useState<WorkOrderDetail | null>(null)
+  const [powerDistributionBoard, setPowerDistributionBoard] = useState(localPowerDistributionBoard)
+  const [powerDistributionCircuitDetail, setPowerDistributionCircuitDetail] = useState(() =>
+    buildLocalPowerDistributionDetail('PWR-CIRCUIT-B1-LV-IN'),
+  )
+  const [convertedPowerDistributionDetail, setConvertedPowerDistributionDetail] = useState<WorkOrderDetail | null>(null)
   const [iotCatalog, setIotCatalog] = useState(localIotCatalog)
   const [selectedIotPoint, setSelectedIotPoint] = useState(() => buildLocalIotPointDetail('MEDGAS-O2-8F'))
   const [lastTelemetryResult, setLastTelemetryResult] = useState<TelemetryIngestionResult | null>(null)
@@ -1313,6 +1487,7 @@ function App() {
       fetch(`${apiBase}/api/operations/iot-catalog`, { signal: controller.signal }),
       fetch(`${apiBase}/api/operations/monitoring-alarms`, { signal: controller.signal }),
       fetch(`${apiBase}/api/operations/medical-gas-board`, { signal: controller.signal }),
+      fetch(`${apiBase}/api/operations/power-distribution-board`, { signal: controller.signal }),
     ])
       .then(async ([
         dashboardResponse,
@@ -1322,6 +1497,7 @@ function App() {
         iotCatalogResponse,
         alarmBoardResponse,
         medicalGasBoardResponse,
+        powerDistributionBoardResponse,
       ]) => {
         if (
           !dashboardResponse.ok ||
@@ -1330,7 +1506,8 @@ function App() {
           !assetBoardResponse.ok ||
           !iotCatalogResponse.ok ||
           !alarmBoardResponse.ok ||
-          !medicalGasBoardResponse.ok
+          !medicalGasBoardResponse.ok ||
+          !powerDistributionBoardResponse.ok
         ) {
           throw new Error('Logistics API unavailable')
         }
@@ -1340,6 +1517,7 @@ function App() {
         const fetchedIotCatalog = (await iotCatalogResponse.json()) as IotIntegrationCatalog
         const fetchedAlarmBoard = (await alarmBoardResponse.json()) as MonitoringAlarmBoard
         const fetchedMedicalGasBoard = (await medicalGasBoardResponse.json()) as MedicalGasBoard
+        const fetchedPowerDistributionBoard = (await powerDistributionBoardResponse.json()) as PowerDistributionBoard
         setDashboard((await dashboardResponse.json()) as OperationsDashboard)
         setBlueprint((await blueprintResponse.json()) as LogisticsBlueprint)
         setDispatchBoard(board)
@@ -1347,6 +1525,7 @@ function App() {
         setIotCatalog(fetchedIotCatalog)
         setAlarmBoard(fetchedAlarmBoard)
         setMedicalGasBoard(fetchedMedicalGasBoard)
+        setPowerDistributionBoard(fetchedPowerDistributionBoard)
         setSelectedAlarm(fetchedAlarmBoard.alarms[0] ?? null)
         setSource('api')
 
@@ -1390,6 +1569,16 @@ function App() {
           })
           if (zoneResponse.ok) {
             setMedicalGasZoneDetail((await zoneResponse.json()) as MedicalGasZoneDetail)
+          }
+        }
+
+        const firstPowerCircuitCode = fetchedPowerDistributionBoard.circuits[0]?.circuitCode
+        if (firstPowerCircuitCode) {
+          const circuitResponse = await fetch(`${apiBase}/api/operations/power-distribution-circuits/${firstPowerCircuitCode}`, {
+            signal: controller.signal,
+          })
+          if (circuitResponse.ok) {
+            setPowerDistributionCircuitDetail((await circuitResponse.json()) as PowerDistributionCircuitDetail)
           }
         }
       })
@@ -1729,6 +1918,184 @@ function App() {
     if (detailResponse.ok) {
       setMedicalGasZoneDetail((await detailResponse.json()) as MedicalGasZoneDetail)
     }
+  }
+
+  async function loadPowerDistributionCircuitDetail(circuitCode: string, forceApi = false) {
+    if (source === 'api' || forceApi) {
+      const response = await fetch(`${apiBase}/api/operations/power-distribution-circuits/${circuitCode}`)
+      if (response.ok) {
+        setPowerDistributionCircuitDetail((await response.json()) as PowerDistributionCircuitDetail)
+        return
+      }
+    }
+
+    setPowerDistributionCircuitDetail(buildLocalPowerDistributionDetail(circuitCode))
+  }
+
+  async function refreshPowerDistributionBoard(circuitCode = powerDistributionCircuitDetail.circuit.circuitCode) {
+    if (source !== 'api') {
+      return
+    }
+
+    const boardResponse = await fetch(`${apiBase}/api/operations/power-distribution-board`)
+    if (boardResponse.ok) {
+      setPowerDistributionBoard((await boardResponse.json()) as PowerDistributionBoard)
+    }
+
+    const detailResponse = await fetch(`${apiBase}/api/operations/power-distribution-circuits/${circuitCode}`)
+    if (detailResponse.ok) {
+      setPowerDistributionCircuitDetail((await detailResponse.json()) as PowerDistributionCircuitDetail)
+    }
+  }
+
+  function applyPowerDistributionAlarm(alarm: MonitoringAlarmEvent) {
+    setPowerDistributionBoard((current) => {
+      const alarms = [alarm, ...current.activeAlarms.filter((item) => item.alarmNo !== alarm.alarmNo)]
+      return {
+        ...current,
+        activeAlarms: alarms,
+        circuits: current.circuits.map((circuit) =>
+          circuit.meterPointCode === alarm.pointCode ? { ...circuit, status: 'Critical' } : circuit,
+        ),
+        kpis: {
+          ...current.kpis,
+          activeAlarms: alarms.length,
+          abnormalCircuits: current.kpis.abnormalCircuits || 1,
+        },
+      }
+    })
+    setPowerDistributionCircuitDetail((current) => ({
+      ...current,
+      circuit: { ...current.circuit, status: 'Critical' },
+      activeAlarms: [alarm, ...current.activeAlarms.filter((item) => item.alarmNo !== alarm.alarmNo)],
+    }))
+  }
+
+  function applyPowerDistributionWorkOrderDetail(detail: WorkOrderDetail) {
+    setConvertedPowerDistributionDetail(detail)
+    setPowerDistributionBoard((current) => {
+      const orders = [detail.workOrder, ...current.openWorkOrders.filter((item) => item.workOrderNo !== detail.workOrder.workOrderNo)]
+      return {
+        ...current,
+        openWorkOrders: orders,
+        kpis: {
+          ...current.kpis,
+          openWorkOrders: orders.length,
+        },
+      }
+    })
+    setPowerDistributionCircuitDetail((current) => ({
+      ...current,
+      openWorkOrders: [
+        detail.workOrder,
+        ...current.openWorkOrders.filter((item) => item.workOrderNo !== detail.workOrder.workOrderNo),
+      ],
+    }))
+  }
+
+  async function ingestPowerDistributionCriticalTelemetry() {
+    const point =
+      iotCatalog.points.find((item) => item.pointCode === powerDistributionCircuitDetail.circuit.meterPointCode) ??
+      localIotCatalog.points.find((item) => item.pointCode === 'PWR-LV-B1-IN-01')!
+    const metricCode = point.metrics.find((metric) => metric.code === 'voltage')?.code ?? point.metrics[0]?.code ?? 'voltage'
+    const unit = point.metrics.find((metric) => metric.code === metricCode)?.unit ?? 'V'
+
+    if (source === 'api') {
+      const response = await fetch(`${apiBase}/api/operations/iot-readings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pointCode: point.pointCode,
+          metricCode,
+          value: 260,
+          unit,
+          collectedAt: new Date().toISOString(),
+        }),
+      })
+      if (response.ok) {
+        const result = (await response.json()) as TelemetryIngestionResult
+        applyTelemetryResult(result)
+        await refreshMonitoringAlarms({ pointCode: result.pointCode, metricCode: result.metricCode })
+        await refreshPowerDistributionBoard()
+        return
+      }
+    }
+
+    const result = buildLocalTelemetryResult(point, metricCode, 260, unit)
+    applyTelemetryResult(result)
+    if (result.reading) {
+      const alarm = buildLocalAlarmFromTelemetry(point, result.reading)
+      applyAlarmUpdate(alarm)
+      applyPowerDistributionAlarm(alarm)
+    }
+  }
+
+  async function convertPowerDistributionAlarmToWorkOrder() {
+    const alarm = powerDistributionCircuitDetail.activeAlarms[0] ?? powerDistributionBoard.activeAlarms[0]
+    if (!alarm) {
+      return
+    }
+
+    if (source === 'api' && alarm.status !== 'ConvertedToWorkOrder') {
+      const response = await fetch(`${apiBase}/api/operations/monitoring-alarms/${alarm.alarmNo}/convert-to-work-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operator: '供配电专项调度员',
+          targetTeam: powerDistributionCircuitDetail.circuit.responsibleTeam,
+          remark: '强电电压告警转入一站式工单调度',
+        }),
+      })
+      if (response.ok) {
+        const convertedAlarm = (await response.json()) as MonitoringAlarmEvent
+        applyAlarmUpdate(convertedAlarm)
+        const detail = convertedAlarm.workOrderNo
+          ? await loadWorkOrderDetailForAlarm(convertedAlarm.workOrderNo, convertedAlarm)
+          : null
+        if (detail) {
+          applyGeneratedWorkOrderDetail(detail, { openDispatch: false })
+          applyPowerDistributionWorkOrderDetail(detail)
+        }
+        await refreshPowerDistributionBoard()
+        return
+      }
+    }
+
+    const convertedAlarm: MonitoringAlarmEvent = {
+      ...alarm,
+      status: 'ConvertedToWorkOrder',
+      workOrderNo: alarm.workOrderNo ?? buildAlarmWorkOrderNo(alarm),
+      acknowledgedBy: alarm.acknowledgedBy ?? powerDistributionCircuitDetail.circuit.responsibleTeam,
+      acknowledgedAt: alarm.acknowledgedAt ?? new Date().toISOString(),
+      lastRemark: '强电电压告警转入一站式工单调度',
+    }
+    const detail = buildLocalAlarmWorkOrderDetail(convertedAlarm)
+    applyAlarmUpdate(convertedAlarm)
+    applyGeneratedWorkOrderDetail(detail, { openDispatch: false })
+    applyPowerDistributionAlarm(convertedAlarm)
+    applyPowerDistributionWorkOrderDetail(detail)
+  }
+
+  async function openConvertedPowerDistributionWorkOrder() {
+    const workOrderNo =
+      convertedPowerDistributionDetail?.workOrder.workOrderNo ??
+      powerDistributionCircuitDetail.openWorkOrders[0]?.workOrderNo ??
+      powerDistributionBoard.openWorkOrders[0]?.workOrderNo
+    if (!workOrderNo) {
+      return
+    }
+
+    const detail =
+      convertedPowerDistributionDetail?.workOrder.workOrderNo === workOrderNo
+        ? convertedPowerDistributionDetail
+        : source === 'api'
+          ? await loadWorkOrderDetailForAlarm(workOrderNo, powerDistributionCircuitDetail.activeAlarms[0])
+          : null
+
+    if (detail) {
+      setSelectedDetail(detail)
+    }
+    openServiceWorkflowTab(serviceWorkflowTabs[1])
   }
 
   function applyMedicalGasAlarm(alarm: MonitoringAlarmEvent) {
@@ -2877,6 +3244,131 @@ function App() {
             </div>
           </section>
 
+          <section className="panel power-distribution-panel">
+            <PanelHeader title="供配电/强电专项" meta="回路 / 电表 / 配电柜 / 巡检 / 告警 / 工单" />
+            <div className="medical-gas-workbench" data-testid="power-distribution-board">
+              <section className="medical-gas-summary">
+                <h2>专项总览</h2>
+                <div className="medical-gas-kpis">
+                  <article>
+                    <span>回路</span>
+                    <strong>{powerDistributionBoard.kpis.circuitCount}</strong>
+                  </article>
+                  <article>
+                    <span>异常回路</span>
+                    <strong>{powerDistributionBoard.kpis.abnormalCircuits}</strong>
+                  </article>
+                  <article>
+                    <span>活动告警</span>
+                    <strong>{powerDistributionBoard.kpis.activeAlarms}</strong>
+                  </article>
+                  <article>
+                    <span>待办巡检</span>
+                    <strong>{powerDistributionBoard.kpis.dueMaintenanceTasks}</strong>
+                  </article>
+                </div>
+                {powerDistributionBoard.circuits.map((circuit) => (
+                  <button
+                    className={`medical-gas-zone-card ${powerDistributionCircuitDetail.circuit.circuitCode === circuit.circuitCode ? 'selected' : ''}`}
+                    key={circuit.circuitCode}
+                    type="button"
+                    onClick={() => void loadPowerDistributionCircuitDetail(circuit.circuitCode)}
+                  >
+                    <strong>{circuit.name}</strong>
+                    <span>{circuit.circuitCode} / {powerDistributionStatusLabels[circuit.status]}</span>
+                    <small>{circuit.location.building} / {circuit.location.room} / {circuit.location.bimElementId}</small>
+                  </button>
+                ))}
+              </section>
+
+              <section className="medical-gas-zone-detail">
+                <h2>回路详情</h2>
+                <div className="detail-title">
+                  <strong>{powerDistributionCircuitDetail.circuit.name}</strong>
+                  <span>{powerDistributionStatusLabels[powerDistributionCircuitDetail.circuit.status]}</span>
+                </div>
+                <dl className="detail-list">
+                  <div>
+                    <dt>BIM</dt>
+                    <dd>{powerDistributionCircuitDetail.circuit.location.bimElementId}</dd>
+                  </div>
+                  <div>
+                    <dt>点位</dt>
+                    <dd>{powerDistributionCircuitDetail.circuit.meterPointCode}</dd>
+                  </div>
+                  <div>
+                    <dt>责任</dt>
+                    <dd>{powerDistributionCircuitDetail.circuit.responsibleTeam}</dd>
+                  </div>
+                  <div>
+                    <dt>来源</dt>
+                    <dd>{powerDistributionCircuitDetail.sourceEvidence.flatMap((item) => item.sources).join('、')}</dd>
+                  </div>
+                </dl>
+                <p>{powerDistributionCircuitDetail.circuit.riskSummary}</p>
+              </section>
+
+              <section className="medical-gas-linked">
+                <h2>点位与资产</h2>
+                <article>
+                  <strong>{powerDistributionCircuitDetail.monitoringPoint?.point.pointCode ?? powerDistributionCircuitDetail.circuit.meterPointCode}</strong>
+                  <span>{powerDistributionCircuitDetail.monitoringPoint?.point.name ?? '低压进线柜多功能电表'}</span>
+                  <small>{powerDistributionCircuitDetail.monitoringPoint?.point.metrics.map((metric) => `${metric.name}/${metric.sourceField}`).join('、')}</small>
+                </article>
+                <article>
+                  <strong>{powerDistributionCircuitDetail.electricalAsset?.asset.assetCode ?? powerDistributionCircuitDetail.circuit.assetCode}</strong>
+                  <span>{powerDistributionCircuitDetail.electricalAsset?.asset.name ?? 'B1 低压进线柜'}</span>
+                  <small>{powerDistributionCircuitDetail.electricalAsset?.asset.maintenanceStrategy ?? '日巡检 + 电压电流阈值告警转工单'}</small>
+                </article>
+                {powerDistributionCircuitDetail.maintenanceTasks.map((task) => (
+                  <article key={task.taskNo}>
+                    <strong>{task.taskNo}</strong>
+                    <span>{task.title}</span>
+                    <small>{maintenanceStatusLabels[task.status]} / {priorityLabels[task.priority]}</small>
+                  </article>
+                ))}
+              </section>
+
+              <section className="medical-gas-actions">
+                <h2>告警与工单</h2>
+                <div className="action-bar">
+                  <button data-testid="power-distribution-ingest-critical" type="button" onClick={() => void ingestPowerDistributionCriticalTelemetry()}>
+                    模拟电压异常
+                  </button>
+                  <button data-testid="power-distribution-convert-workorder" type="button" onClick={() => void convertPowerDistributionAlarmToWorkOrder()}>
+                    告警转工单
+                  </button>
+                  <button data-testid="power-distribution-open-dispatch" type="button" onClick={() => void openConvertedPowerDistributionWorkOrder()}>
+                    进入调度池
+                  </button>
+                </div>
+                <div className="medical-gas-flow-list">
+                  {powerDistributionCircuitDetail.activeAlarms.map((alarm) => (
+                    <article key={alarm.alarmNo}>
+                      <strong>{alarm.alarmNo}</strong>
+                      <span>{alarm.pointCode} / {telemetryRiskLabels[alarm.riskLevel]} / {alarmStatusLabels[alarm.status]}</span>
+                      <small>{alarm.workOrderNo ?? '尚未转工单'}</small>
+                    </article>
+                  ))}
+                  {powerDistributionCircuitDetail.openWorkOrders.map((order) => (
+                    <article key={order.workOrderNo}>
+                      <strong>{order.workOrderNo}</strong>
+                      <span>{order.title}</span>
+                      <small>{order.location.bimElementId}</small>
+                    </article>
+                  ))}
+                  {convertedPowerDistributionDetail ? (
+                    <article>
+                      <strong>{convertedPowerDistributionDetail.workOrder.workOrderNo}</strong>
+                      <span>{convertedPowerDistributionDetail.sourceEvidence.map((item) => item.featureName).join('、')}</span>
+                      <small>{convertedPowerDistributionDetail.location.bimElementId}</small>
+                    </article>
+                  ) : null}
+                </div>
+              </section>
+            </div>
+          </section>
+
           <section className="panel spatial-panel">
             <PanelHeader title="BIM 空间业务定位" meta="设备 / 告警 / 工单同图层" />
             {activePage === 'spatial' ? (
@@ -3287,6 +3779,52 @@ function buildLocalMedicalGasDetail(zoneCode: string): MedicalGasZoneDetail {
     openWorkOrders: localMedicalGasBoard.openWorkOrders.filter((order) => order.location.bimElementId === zone.location.bimElementId),
     maintenanceTasks: localMedicalGasBoard.dueMaintenanceTasks.filter((task) => task.assetCode === zone.valveAssetCode),
     sourceEvidence: medicalGasSourceEvidence,
+  }
+}
+
+function buildLocalPowerDistributionDetail(circuitCode: string): PowerDistributionCircuitDetail {
+  const circuit =
+    localPowerDistributionBoard.circuits.find((item) => item.circuitCode === circuitCode) ??
+    localPowerDistributionBoard.circuits[0]
+
+  return {
+    circuit,
+    monitoringPoint: buildLocalIotPointDetail(circuit.meterPointCode),
+    electricalAsset: {
+      asset: localPowerAsset,
+      plans: [
+        {
+          planCode: 'MP-PWR-LV-IN',
+          assetCode: localPowerAsset.assetCode,
+          name: 'B1 低压进线柜运行巡检',
+          taskType: 'SafetyCheck',
+          cycleDays: 1,
+          nextDueAt: '2026-05-30T10:30:00+08:00',
+          responsibleTeam: '电工班工作人员',
+          checklistTemplate: [
+            { code: 'CHK-VOLTAGE', name: '三相电压', standard: '电压在安全范围内且无缺相', required: true },
+            { code: 'CHK-CURRENT', name: '进线电流', standard: '电流负荷无异常突增', required: true },
+            { code: 'CHK-HARMONIC', name: '谐波与功率因数', standard: '谐波和功率因数处于可接受范围', required: true },
+          ],
+          sourceEvidence: powerDistributionSourceEvidence,
+        },
+      ],
+      tasks: [localPowerTask],
+      lifecycle: [
+        {
+          occurredAt: '2026-05-29T09:30:00+08:00',
+          assetCode: localPowerAsset.assetCode,
+          eventType: '强电巡检',
+          operator: '电工班工作人员',
+          summary: '完成低压进线柜三相电压和功率因数核查',
+        },
+      ],
+      sourceEvidence: powerDistributionSourceEvidence,
+    },
+    activeAlarms: localPowerDistributionBoard.activeAlarms.filter((alarm) => alarm.pointCode === circuit.meterPointCode),
+    openWorkOrders: localPowerDistributionBoard.openWorkOrders.filter((order) => order.location.bimElementId === circuit.location.bimElementId),
+    maintenanceTasks: localPowerDistributionBoard.dueMaintenanceTasks.filter((task) => task.assetCode === circuit.assetCode),
+    sourceEvidence: powerDistributionSourceEvidence,
   }
 }
 

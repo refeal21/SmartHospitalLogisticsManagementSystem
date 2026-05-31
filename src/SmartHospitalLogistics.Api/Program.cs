@@ -165,6 +165,15 @@ api.MapGet("/medical-gas-zones/{zoneCode}", (string zoneCode, IMedicalGasService
         : Results.NotFound(new { error = $"Medical gas zone {zoneCode} was not found." }))
     .WithName("GetMedicalGasZoneDetail");
 
+api.MapGet("/power-distribution-board", (IPowerDistributionService service) => service.GetBoard())
+    .WithName("GetPowerDistributionBoard");
+
+api.MapGet("/power-distribution-circuits/{circuitCode}", (string circuitCode, IPowerDistributionService service) =>
+    service.GetCircuitDetail(circuitCode) is { } detail
+        ? Results.Ok(detail)
+        : Results.NotFound(new { error = $"Power distribution circuit {circuitCode} was not found." }))
+    .WithName("GetPowerDistributionCircuitDetail");
+
 app.Run();
 
 static IResult ToHttpResult(DispatchOperationResult result)

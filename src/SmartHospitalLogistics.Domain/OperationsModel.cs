@@ -597,6 +597,54 @@ public sealed record MedicalGasZoneDetail(
     IReadOnlyList<MaintenanceTask> MaintenanceTasks,
     IReadOnlyList<FeatureEvidence> SourceEvidence);
 
+public enum PowerDistributionCircuitStatus
+{
+    Normal,
+    Warning,
+    Critical,
+    Maintenance
+}
+
+public sealed record PowerDistributionCircuit(
+    string CircuitCode,
+    string Name,
+    string System,
+    SpatialLocation Location,
+    string ResponsibleTeam,
+    string MeterPointCode,
+    string AssetCode,
+    PowerDistributionCircuitStatus Status,
+    IReadOnlyList<string> MonitoredMetrics,
+    string RiskSummary,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
+
+public sealed record PowerDistributionBoardKpi(
+    int CircuitCount,
+    int AbnormalCircuits,
+    int ActiveAlarms,
+    int OpenWorkOrders,
+    int DueMaintenanceTasks);
+
+public sealed record PowerDistributionBoard(
+    DateTimeOffset GeneratedAt,
+    IReadOnlyList<PowerDistributionCircuit> Circuits,
+    IReadOnlyList<IotMonitoringPoint> MonitoringPoints,
+    IReadOnlyList<AssetLedgerItem> ElectricalAssets,
+    IReadOnlyList<MonitoringAlarmEvent> ActiveAlarms,
+    IReadOnlyList<WorkOrder> OpenWorkOrders,
+    IReadOnlyList<MaintenanceTask> DueMaintenanceTasks,
+    IReadOnlyList<FeatureEvidence> SourceEvidence,
+    PowerDistributionBoardKpi Kpis);
+
+public sealed record PowerDistributionCircuitDetail(
+    PowerDistributionCircuit Circuit,
+    IotPointDetail? MonitoringPoint,
+    AssetMaintenanceDetail? ElectricalAsset,
+    IReadOnlyList<MonitoringAlarmEvent> ActiveAlarms,
+    IReadOnlyList<WorkOrder> OpenWorkOrders,
+    IReadOnlyList<MaintenanceTask> MaintenanceTasks,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
+
 public sealed record FeatureEvidence(
     string FeatureName,
     IReadOnlyList<string> Sources,

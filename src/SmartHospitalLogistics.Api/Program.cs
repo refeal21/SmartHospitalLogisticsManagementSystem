@@ -201,6 +201,15 @@ api.MapGet("/energy-performance-areas/{areaCode}", (string areaCode, IEnergyPerf
         : Results.NotFound(new { error = $"Energy performance area {areaCode} was not found." }))
     .WithName("GetEnergyPerformanceAreaDetail");
 
+api.MapGet("/safety-emergency-board", (ISafetyEmergencyService service) => service.GetBoard())
+    .WithName("GetSafetyEmergencyBoard");
+
+api.MapGet("/safety-emergency-nodes/{nodeCode}", (string nodeCode, ISafetyEmergencyService service) =>
+    service.GetNodeDetail(nodeCode) is { } detail
+        ? Results.Ok(detail)
+        : Results.NotFound(new { error = $"Safety emergency node {nodeCode} was not found." }))
+    .WithName("GetSafetyEmergencyNodeDetail");
+
 app.Run();
 
 static IResult ToHttpResult(DispatchOperationResult result)

@@ -326,6 +326,8 @@ type IotSystemCategory =
   | 'MedicalGas'
   | 'EnvironmentQuality'
   | 'Sewage'
+  | 'FireSafety'
+  | 'SecurityIntelligence'
 type TelemetryRiskLevel = 'Normal' | 'Warning' | 'Critical'
 type MonitoringAlarmStatus = 'New' | 'Acknowledged' | 'ConvertedToWorkOrder' | 'Closed'
 type ThresholdDirection = 'Above' | 'Below' | 'OutsideRange'
@@ -678,6 +680,72 @@ type EnergyPerformanceAreaDetail = {
   sourceEvidence: FeatureEvidence[]
 }
 
+type SafetyEmergencyEventType =
+  | 'FireAlarm'
+  | 'ElectricalFire'
+  | 'FireDoor'
+  | 'CombustibleGas'
+  | 'AccessControl'
+  | 'VideoSecurity'
+  | 'EmergencyResponse'
+
+type SafetyEmergencyNodeStatus = 'Normal' | 'Warning' | 'Critical' | 'Commanding' | 'Closed'
+
+type EmergencyResponseLevel = 'Routine' | 'Attention' | 'LevelOne' | 'LevelTwo'
+
+type SafetyEmergencyNode = {
+  nodeCode: string
+  name: string
+  eventType: SafetyEmergencyEventType
+  location: SpatialLocation
+  responsibleTeam: string
+  monitoringPointCode: string
+  assetCode: string
+  status: SafetyEmergencyNodeStatus
+  responseLevel: EmergencyResponseLevel
+  linkedSystems: string[]
+  sourceEvidence: FeatureEvidence[]
+}
+
+type EmergencyResponseStep = {
+  stepCode: string
+  sequence: number
+  action: string
+  responsibleRole: string
+  targetMinutes: number
+  requiresConfirmation: boolean
+}
+
+type SafetyEmergencyBoardKpi = {
+  nodeCount: number
+  activeAlarms: number
+  criticalNodes: number
+  openWorkOrders: number
+  activeEmergencyEvents: number
+}
+
+type SafetyEmergencyBoard = {
+  generatedAt: string
+  nodes: SafetyEmergencyNode[]
+  monitoringPoints: IotMonitoringPoint[]
+  safetyAssets: AssetLedgerItem[]
+  activeAlarms: MonitoringAlarmEvent[]
+  openWorkOrders: WorkOrder[]
+  responseProcedure: EmergencyResponseStep[]
+  sourceEvidence: FeatureEvidence[]
+  kpis: SafetyEmergencyBoardKpi
+}
+
+type SafetyEmergencyNodeDetail = {
+  node: SafetyEmergencyNode
+  monitoringPoint?: IotPointDetail | null
+  safetyAsset?: AssetMaintenanceDetail | null
+  activeAlarms: MonitoringAlarmEvent[]
+  openWorkOrders: WorkOrder[]
+  responseProcedure: EmergencyResponseStep[]
+  sourceEvidence: FeatureEvidence[]
+}
+
 type SpatialPointKind = 'workOrder' | 'asset' | 'alarm' | 'iot'
 type SpatialPointTone = 'workorder' | 'asset' | 'alert' | 'normal'
 
@@ -715,6 +783,7 @@ type WorkspacePage =
   | 'hvac'
   | 'waterOperations'
   | 'energyPerformance'
+  | 'safetyEmergency'
   | 'spatial'
   | 'evidence'
 
@@ -767,6 +836,20 @@ const locations = {
     floor: 'B1',
     room: '污水处理站',
     bimElementId: 'BIM-LOG-B1-SEWAGE',
+  },
+  fire: {
+    campus: '同仁亦庄院区',
+    building: '门诊医技楼',
+    floor: 'F1',
+    room: '门诊共享大厅',
+    bimElementId: 'BIM-SEC-OPD-1F-FIRE',
+  },
+  security: {
+    campus: '同仁亦庄院区',
+    building: '急诊楼',
+    floor: 'F1',
+    room: '急诊出入口',
+    bimElementId: 'BIM-SEC-ER-ACCESS',
   },
 }
 
@@ -856,7 +939,7 @@ const localBlueprint: LogisticsBlueprint = {
     { code: 'FACILITY', name: '设备设施', items: ['设备台账', '巡检保养', '维修记录', '备件库存', '电梯专项', '供配电专项', '暖通/给排水/医气专项'] },
     { code: 'SPATIAL', name: 'BIM 空间', items: ['空间台账', '楼层视图', '设备点位', '告警点位', '工单点位'] },
     { code: 'ENVIRONMENT', name: '环境监管', items: ['环境点位', '预警池', '报警策略', '医废处置', '智慧卫生间'] },
-    { code: 'MANAGEMENT', name: '综合管理', items: ['质量标准', '合同管理', '考核管理', '人员班组', '运营分析', '能耗成本'] },
+    { code: 'MANAGEMENT', name: '综合管理', items: ['质量标准', '合同管理', '考核管理', '人员班组', '运营分析', '能耗成本', '消防安防应急'] },
     { code: 'GOVERNANCE', name: '系统治理', items: ['角色权限', '流程配置', 'SLA 配置', '字典配置', '审计日志'] },
   ],
   featureGroups: [
@@ -1172,6 +1255,8 @@ const localIotCatalog: IotIntegrationCatalog = {
     { category: 'Sewage', name: '污水站监测', subsystems: ['医疗废水', '污水处理站', '水质监测'], roles: ['给排水班工作人员'], endpoints: ['控制室电脑端', '移动端'] },
     { category: 'MedicalGas', name: '医用气体系统', subsystems: ['氧气', '压缩空气', '负压真空'], roles: ['医气维保人员'], endpoints: ['控制室电脑端', '移动端'] },
     { category: 'EnvironmentQuality', name: '环境质量系统', subsystems: ['CO2', '温湿度'], roles: ['环境监管班组'], endpoints: ['控制室电脑端', '移动端'] },
+    { category: 'FireSafety', name: '火灾自动报警及联动控制系统', subsystems: ['火灾自动报警', '电气火灾监控', '防火门监控'], roles: ['消防值班人员'], endpoints: ['控制室电脑端', '移动端'] },
+    { category: 'SecurityIntelligence', name: '公共安全与智能化系统', subsystems: ['门禁', '视频安防', '公共安全报警'], roles: ['保卫处值班人员'], endpoints: ['控制室电脑端', '移动端'] },
   ],
   points: [
     {
@@ -1242,6 +1327,34 @@ const localIotCatalog: IotIntegrationCatalog = {
         { code: 'ph', name: 'PH', unit: '', dataType: 'decimal', sourceField: '水质' },
         { code: 'cod', name: 'COD', unit: 'mg/L', dataType: 'decimal', sourceField: '医疗废水指标' },
         { code: 'flow', name: '流量', unit: 'm3/h', dataType: 'decimal', sourceField: '流量' },
+      ],
+      sourceEvidence: iotSourceEvidence,
+    },
+    {
+      pointCode: 'FIRE-SMOKE-OPD-1F-01',
+      name: '门诊 1F 共享大厅烟感报警点',
+      category: 'FireSafety',
+      location: locations.fire,
+      deviceCode: 'FIRE-ALARM-OPD-1F',
+      protocolAdapter: 'fire-alarm-adapter',
+      metrics: [
+        { code: 'smoke_density', name: '烟雾浓度', unit: '%obs/m', dataType: 'decimal', sourceField: '火灾报警' },
+        { code: 'device_status', name: '设备状态', unit: '', dataType: 'enum', sourceField: '消防设备状态' },
+        { code: 'linkage_status', name: '联动状态', unit: '', dataType: 'enum', sourceField: '消防联动状态' },
+      ],
+      sourceEvidence: iotSourceEvidence,
+    },
+    {
+      pointCode: 'SEC-ACCESS-ER-01',
+      name: '急诊出入口门禁安防点',
+      category: 'SecurityIntelligence',
+      location: locations.security,
+      deviceCode: 'SEC-ACCESS-ER-DOOR',
+      protocolAdapter: 'security-adapter',
+      metrics: [
+        { code: 'forced_open', name: '强开次数', unit: 'count', dataType: 'integer', sourceField: '门禁异常' },
+        { code: 'device_online', name: '在线状态', unit: '', dataType: 'enum', sourceField: '安防设备在线' },
+        { code: 'alarm_status', name: '报警状态', unit: '', dataType: 'enum', sourceField: '公共安全报警' },
       ],
       sourceEvidence: iotSourceEvidence,
     },
@@ -1759,6 +1872,108 @@ const localEnergyPerformanceBoard: EnergyPerformanceBoard = {
   },
 }
 
+const safetyEmergencySourceEvidence: FeatureEvidence[] = [
+  {
+    featureName: '消防/安防/应急联动',
+    sources: ['北建院', 'PPT'],
+    evidenceSummary: '北建院客户数据包含火灾自动报警、电气火灾、防火门、可燃气体、公共安全、门禁和视频安防等系统；PPT 要求通过 BIM 时空底座联动事件、空间和工单。',
+  },
+  {
+    featureName: '统一告警与工单闭环',
+    sources: ['中科医信', 'PPT'],
+    evidenceSummary: '竞品功能树包含统一报警、设备安全和应急任务处置颗粒度；本系统只接入事件和处置闭环，不重做消防主机或安防平台。',
+  },
+]
+
+const localSafetyAssets: AssetLedgerItem[] = [
+  {
+    assetCode: 'FIRE-ALARM-OPD-1F',
+    name: '门诊 1F 火灾自动报警控制点',
+    system: '消防报警',
+    criticality: 'LifeSafety',
+    location: locations.fire,
+    status: 'Warning',
+    ownerTeam: '消防值班人员',
+    manufacturer: 'Mock厂商',
+    model: 'FAS-OPD-1F',
+    commissionedOn: '2021-07-01',
+    maintenanceStrategy: '每日联动测试 + 异常转工单',
+    healthScore: 83,
+    currentRisk: '烟感、手报、防火门和消防联动状态需进入统一告警与应急处置闭环',
+    sourceTags: ['北建院', 'PPT'],
+  },
+  {
+    assetCode: 'SEC-ACCESS-ER-DOOR',
+    name: '急诊出入口门禁安防控制器',
+    system: '安防门禁',
+    criticality: 'High',
+    location: locations.security,
+    status: 'Normal',
+    ownerTeam: '保卫处值班人员',
+    manufacturer: 'Mock厂商',
+    model: 'ACS-ER-01',
+    commissionedOn: '2022-02-15',
+    maintenanceStrategy: '门禁在线监测 + 强开告警',
+    healthScore: 88,
+    currentRisk: '强开、离线和报警状态需联动保卫处确认并可转工单',
+    sourceTags: ['北建院', 'PPT'],
+  },
+]
+
+const localSafetyProcedure: EmergencyResponseStep[] = [
+  { stepCode: 'RESP-VERIFY', sequence: 1, action: '确认告警来源、BIM 位置和现场风险等级', responsibleRole: '消防值班人员', targetMinutes: 3, requiresConfirmation: true },
+  { stepCode: 'RESP-BROADCAST', sequence: 2, action: '联动通知后勤调度、安保/消防值班和属地科室', responsibleRole: '后勤调度员', targetMinutes: 5, requiresConfirmation: true },
+  { stepCode: 'RESP-DISPATCH', sequence: 3, action: '转入一站式工单并派发现场处置人员', responsibleRole: '后勤调度员', targetMinutes: 8, requiresConfirmation: true },
+  { stepCode: 'RESP-REVIEW', sequence: 4, action: '完成处置复核、留痕和应急复盘', responsibleRole: '消防值班人员', targetMinutes: 30, requiresConfirmation: false },
+]
+
+const localSafetyEmergencyBoard: SafetyEmergencyBoard = {
+  generatedAt: '2026-05-30T09:30:00+08:00',
+  nodes: [
+    {
+      nodeCode: 'SAFE-FIRE-OPD-1F',
+      name: '门诊 1F 火灾自动报警联动点',
+      eventType: 'FireAlarm',
+      location: locations.fire,
+      responsibleTeam: '消防值班人员',
+      monitoringPointCode: 'FIRE-SMOKE-OPD-1F-01',
+      assetCode: 'FIRE-ALARM-OPD-1F',
+      status: 'Warning',
+      responseLevel: 'LevelOne',
+      linkedSystems: ['火灾自动报警', '电气火灾监控', '防火门监控', 'BIM 空间定位', '一站式工单'],
+      sourceEvidence: safetyEmergencySourceEvidence,
+    },
+    {
+      nodeCode: 'SAFE-SEC-ER-ACCESS',
+      name: '急诊出入口安防门禁联动点',
+      eventType: 'AccessControl',
+      location: locations.security,
+      responsibleTeam: '保卫处值班人员',
+      monitoringPointCode: 'SEC-ACCESS-ER-01',
+      assetCode: 'SEC-ACCESS-ER-DOOR',
+      status: 'Normal',
+      responseLevel: 'Attention',
+      linkedSystems: ['门禁', '视频安防', 'BIM 空间定位', '一站式工单'],
+      sourceEvidence: safetyEmergencySourceEvidence,
+    },
+  ],
+  monitoringPoints: localIotCatalog.points.filter((point) =>
+    ['FIRE-SMOKE-OPD-1F-01', 'SEC-ACCESS-ER-01'].includes(point.pointCode),
+  ),
+  safetyAssets: localSafetyAssets,
+  activeAlarms: [],
+  openWorkOrders: [],
+  responseProcedure: localSafetyProcedure,
+  sourceEvidence: safetyEmergencySourceEvidence,
+  kpis: {
+    nodeCount: 2,
+    activeAlarms: 0,
+    criticalNodes: 0,
+    openWorkOrders: 0,
+    activeEmergencyEvents: 0,
+  },
+}
+
 const statusLabels: Record<WorkOrderStatus | FacilityStatus | SignalStatus, string> = {
   New: '新建',
   Dispatched: '已派工',
@@ -1800,7 +2015,7 @@ const criticalityLabels: Record<AssetCriticality, string> = {
   LifeSafety: '生命安全',
 }
 
-const iotCategoryLabels: Record<IotSystemCategory, string> = {
+const iotCategoryLabels: Record<string, string> = {
   StrongElectric: '强电',
   Hvac: '暖通',
   WaterSupplyDrainage: '给排水',
@@ -1863,6 +2078,14 @@ const energyPerformanceStatusLabels: Record<EnergyPerformanceAreaStatus, string>
   Optimizing: '优化中',
 }
 
+const safetyEmergencyStatusLabels: Record<SafetyEmergencyNodeStatus, string> = {
+  Normal: '正常',
+  Warning: '预警',
+  Critical: '严重',
+  Commanding: '指挥中',
+  Closed: '已关闭',
+}
+
 const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = {
   overview: {
     title: '后勤运营总览',
@@ -1904,6 +2127,10 @@ const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = 
     title: '能耗与运行绩效工作台',
     summary: '把强电、暖通、给排水/污水站的点位、告警、工单和巡检实绩聚合为可追溯的能耗成本和运行绩效。',
   },
+  safetyEmergency: {
+    title: '消防安防应急联动工作台',
+    summary: '接收消防、门禁、公共安全事件，联动 BIM 位置、告警确认、应急步骤和一站式工单调度。',
+  },
   spatial: {
     title: 'BIM 空间运维工作台',
     summary: '聚焦空间定位：设备、告警、工单和班组负载在同一空间语境里联动。',
@@ -1922,6 +2149,19 @@ const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5248'
 
 function pageFromMenuItem(item: string): WorkspacePage {
   const normalized = item.toLowerCase()
+  if (
+    normalized.includes('safety-emergency') ||
+    normalized.includes('safety') ||
+    normalized.includes('fire') ||
+    normalized.includes('security') ||
+    item.includes('消防') ||
+    item.includes('安防') ||
+    item.includes('应急') ||
+    item.includes('火警')
+  ) {
+    return 'safetyEmergency'
+  }
+
   if (
     normalized.includes('energy-performance') ||
     normalized.includes('energy') ||
@@ -2074,6 +2314,11 @@ function App() {
   const [energyPerformanceAreaDetail, setEnergyPerformanceAreaDetail] = useState(() =>
     buildLocalEnergyPerformanceDetail('ENE-POWER-B1'),
   )
+  const [safetyEmergencyBoard, setSafetyEmergencyBoard] = useState(localSafetyEmergencyBoard)
+  const [safetyEmergencyNodeDetail, setSafetyEmergencyNodeDetail] = useState(() =>
+    buildLocalSafetyEmergencyDetail('SAFE-FIRE-OPD-1F'),
+  )
+  const [convertedSafetyEmergencyDetail, setConvertedSafetyEmergencyDetail] = useState<WorkOrderDetail | null>(null)
   const [iotCatalog, setIotCatalog] = useState(localIotCatalog)
   const [selectedIotPoint, setSelectedIotPoint] = useState(() => buildLocalIotPointDetail('MEDGAS-O2-8F'))
   const [lastTelemetryResult, setLastTelemetryResult] = useState<TelemetryIngestionResult | null>(null)
@@ -2118,6 +2363,7 @@ function App() {
       fetch(`${apiBase}/api/operations/hvac-board`, { signal: controller.signal }),
       fetch(`${apiBase}/api/operations/water-operations-board`, { signal: controller.signal }),
       fetch(`${apiBase}/api/operations/energy-performance-board`, { signal: controller.signal }),
+      fetch(`${apiBase}/api/operations/safety-emergency-board`, { signal: controller.signal }),
     ])
       .then(async ([
         dashboardResponse,
@@ -2131,6 +2377,7 @@ function App() {
         hvacBoardResponse,
         waterOperationsBoardResponse,
         energyPerformanceBoardResponse,
+        safetyEmergencyBoardResponse,
       ]) => {
         if (
           !dashboardResponse.ok ||
@@ -2143,7 +2390,8 @@ function App() {
           !powerDistributionBoardResponse.ok ||
           !hvacBoardResponse.ok ||
           !waterOperationsBoardResponse.ok ||
-          !energyPerformanceBoardResponse.ok
+          !energyPerformanceBoardResponse.ok ||
+          !safetyEmergencyBoardResponse.ok
         ) {
           throw new Error('Logistics API unavailable')
         }
@@ -2157,6 +2405,7 @@ function App() {
         const fetchedHvacBoard = (await hvacBoardResponse.json()) as HvacBoard
         const fetchedWaterOperationsBoard = (await waterOperationsBoardResponse.json()) as WaterOperationsBoard
         const fetchedEnergyPerformanceBoard = (await energyPerformanceBoardResponse.json()) as EnergyPerformanceBoard
+        const fetchedSafetyEmergencyBoard = (await safetyEmergencyBoardResponse.json()) as SafetyEmergencyBoard
         setDashboard((await dashboardResponse.json()) as OperationsDashboard)
         setBlueprint((await blueprintResponse.json()) as LogisticsBlueprint)
         setDispatchBoard(board)
@@ -2168,6 +2417,7 @@ function App() {
         setHvacBoard(fetchedHvacBoard)
         setWaterOperationsBoard(fetchedWaterOperationsBoard)
         setEnergyPerformanceBoard(fetchedEnergyPerformanceBoard)
+        setSafetyEmergencyBoard(fetchedSafetyEmergencyBoard)
         setSelectedAlarm(fetchedAlarmBoard.alarms[0] ?? null)
         setSource('api')
 
@@ -2251,6 +2501,16 @@ function App() {
           })
           if (energyResponse.ok) {
             setEnergyPerformanceAreaDetail((await energyResponse.json()) as EnergyPerformanceAreaDetail)
+          }
+        }
+
+        const firstSafetyNodeCode = fetchedSafetyEmergencyBoard.nodes[0]?.nodeCode
+        if (firstSafetyNodeCode) {
+          const safetyResponse = await fetch(`${apiBase}/api/operations/safety-emergency-nodes/${firstSafetyNodeCode}`, {
+            signal: controller.signal,
+          })
+          if (safetyResponse.ok) {
+            setSafetyEmergencyNodeDetail((await safetyResponse.json()) as SafetyEmergencyNodeDetail)
           }
         }
       })
@@ -3220,6 +3480,182 @@ function App() {
     openWorkspacePage('供配电专项')
   }
 
+  async function loadSafetyEmergencyNodeDetail(nodeCode: string, forceApi = false) {
+    if (source === 'api' || forceApi) {
+      const response = await fetch(`${apiBase}/api/operations/safety-emergency-nodes/${nodeCode}`)
+      if (response.ok) {
+        setSafetyEmergencyNodeDetail((await response.json()) as SafetyEmergencyNodeDetail)
+        return
+      }
+    }
+
+    setSafetyEmergencyNodeDetail(buildLocalSafetyEmergencyDetail(nodeCode))
+  }
+
+  async function refreshSafetyEmergencyBoard(nodeCode = safetyEmergencyNodeDetail.node.nodeCode) {
+    if (source !== 'api') {
+      return
+    }
+
+    const boardResponse = await fetch(`${apiBase}/api/operations/safety-emergency-board`)
+    if (boardResponse.ok) {
+      setSafetyEmergencyBoard((await boardResponse.json()) as SafetyEmergencyBoard)
+    }
+
+    const detailResponse = await fetch(`${apiBase}/api/operations/safety-emergency-nodes/${nodeCode}`)
+    if (detailResponse.ok) {
+      setSafetyEmergencyNodeDetail((await detailResponse.json()) as SafetyEmergencyNodeDetail)
+    }
+  }
+
+  function applySafetyEmergencyAlarm(alarm: MonitoringAlarmEvent) {
+    setSafetyEmergencyBoard((current) => {
+      const alarms = [alarm, ...current.activeAlarms.filter((item) => item.alarmNo !== alarm.alarmNo)]
+      return {
+        ...current,
+        activeAlarms: alarms,
+        nodes: current.nodes.map((node) =>
+          node.monitoringPointCode === alarm.pointCode ? { ...node, status: 'Critical' } : node,
+        ),
+        kpis: {
+          ...current.kpis,
+          activeAlarms: alarms.length,
+          criticalNodes: Math.max(current.kpis.criticalNodes, 1),
+          activeEmergencyEvents: Math.max(current.kpis.activeEmergencyEvents, 1),
+        },
+      }
+    })
+    setSafetyEmergencyNodeDetail((current) => ({
+      ...current,
+      node: current.node.monitoringPointCode === alarm.pointCode ? { ...current.node, status: 'Critical' } : current.node,
+      activeAlarms: [alarm, ...current.activeAlarms.filter((item) => item.alarmNo !== alarm.alarmNo)],
+    }))
+  }
+
+  function applySafetyEmergencyWorkOrderDetail(detail: WorkOrderDetail) {
+    setConvertedSafetyEmergencyDetail(detail)
+    setSafetyEmergencyBoard((current) => {
+      const orders = [detail.workOrder, ...current.openWorkOrders.filter((item) => item.workOrderNo !== detail.workOrder.workOrderNo)]
+      return {
+        ...current,
+        openWorkOrders: orders,
+        kpis: { ...current.kpis, openWorkOrders: orders.length, activeEmergencyEvents: Math.max(current.kpis.activeEmergencyEvents, 1) },
+      }
+    })
+    setSafetyEmergencyNodeDetail((current) => ({
+      ...current,
+      openWorkOrders: [
+        detail.workOrder,
+        ...current.openWorkOrders.filter((item) => item.workOrderNo !== detail.workOrder.workOrderNo),
+      ],
+    }))
+  }
+
+  async function ingestSafetyEmergencyFire() {
+    const point =
+      iotCatalog.points.find((item) => item.pointCode === 'FIRE-SMOKE-OPD-1F-01') ??
+      localIotCatalog.points.find((item) => item.pointCode === 'FIRE-SMOKE-OPD-1F-01')!
+
+    if (source === 'api') {
+      const response = await fetch(`${apiBase}/api/operations/iot-readings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pointCode: point.pointCode,
+          metricCode: 'smoke_density',
+          value: 1.6,
+          unit: '%obs/m',
+          collectedAt: new Date().toISOString(),
+        }),
+      })
+      if (response.ok) {
+        const result = (await response.json()) as TelemetryIngestionResult
+        applyTelemetryResult(result)
+        await refreshMonitoringAlarms({ pointCode: result.pointCode, metricCode: result.metricCode })
+        await refreshSafetyEmergencyBoard('SAFE-FIRE-OPD-1F')
+        return
+      }
+    }
+
+    const result = buildLocalTelemetryResult(point, 'smoke_density', 1.6, '%obs/m')
+    applyTelemetryResult(result)
+    if (result.reading) {
+      const alarm = buildLocalAlarmFromTelemetry(point, result.reading)
+      applyAlarmUpdate(alarm)
+      applySafetyEmergencyAlarm(alarm)
+    }
+  }
+
+  async function convertSafetyEmergencyAlarm() {
+    const alarm =
+      safetyEmergencyNodeDetail.activeAlarms.find((item) => item.status !== 'ConvertedToWorkOrder') ??
+      safetyEmergencyBoard.activeAlarms.find((item) => item.status !== 'ConvertedToWorkOrder')
+    if (!alarm) {
+      return
+    }
+
+    if (source === 'api') {
+      const response = await fetch(`${apiBase}/api/operations/monitoring-alarms/${alarm.alarmNo}/convert-to-work-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operator: '消防安防调度员',
+          targetTeam: safetyEmergencyNodeDetail.node.responsibleTeam,
+          remark: '消防安防应急告警转入一站式工单调度',
+        }),
+      })
+      if (response.ok) {
+        const convertedAlarm = (await response.json()) as MonitoringAlarmEvent
+        applyAlarmUpdate(convertedAlarm)
+        const detail = convertedAlarm.workOrderNo
+          ? await loadWorkOrderDetailForAlarm(convertedAlarm.workOrderNo, convertedAlarm)
+          : null
+        if (detail) {
+          applyGeneratedWorkOrderDetail(detail, { openDispatch: false })
+          applySafetyEmergencyWorkOrderDetail(detail)
+        }
+        await refreshSafetyEmergencyBoard('SAFE-FIRE-OPD-1F')
+        return
+      }
+    }
+
+    const convertedAlarm: MonitoringAlarmEvent = {
+      ...alarm,
+      status: 'ConvertedToWorkOrder',
+      workOrderNo: alarm.workOrderNo ?? buildAlarmWorkOrderNo(alarm),
+      acknowledgedBy: alarm.acknowledgedBy ?? safetyEmergencyNodeDetail.node.responsibleTeam,
+      acknowledgedAt: alarm.acknowledgedAt ?? new Date().toISOString(),
+      lastRemark: '消防安防应急告警转入一站式工单调度',
+    }
+    const detail = buildLocalAlarmWorkOrderDetail(convertedAlarm)
+    applyAlarmUpdate(convertedAlarm)
+    applyGeneratedWorkOrderDetail(detail, { openDispatch: false })
+    applySafetyEmergencyAlarm(convertedAlarm)
+    applySafetyEmergencyWorkOrderDetail(detail)
+  }
+
+  async function openConvertedSafetyEmergencyWorkOrder() {
+    const workOrderNo =
+      convertedSafetyEmergencyDetail?.workOrder.workOrderNo ??
+      safetyEmergencyNodeDetail.openWorkOrders[0]?.workOrderNo ??
+      safetyEmergencyBoard.openWorkOrders[0]?.workOrderNo
+    if (!workOrderNo) {
+      return
+    }
+
+    const detail =
+      convertedSafetyEmergencyDetail?.workOrder.workOrderNo === workOrderNo
+        ? convertedSafetyEmergencyDetail
+        : source === 'api'
+          ? await loadWorkOrderDetailForAlarm(workOrderNo, safetyEmergencyNodeDetail.activeAlarms[0])
+          : null
+
+    if (detail) {
+      setSelectedDetail(detail)
+    }
+    openServiceWorkflowTab(serviceWorkflowTabs[1])
+  }
+
   function applyMedicalGasAlarm(alarm: MonitoringAlarmEvent) {
     setMedicalGasBoard((current) => {
       const alarms = [alarm, ...current.activeAlarms.filter((item) => item.alarmNo !== alarm.alarmNo)]
@@ -3875,7 +4311,7 @@ function App() {
             )}
 
             {activeServiceTab === '工单调度' && (
-              <div className="dispatch-workbench">
+              <div className="dispatch-workbench" data-testid="dispatch-board">
               <section>
                 <h2>工单池</h2>
                 <div className="work-order-list" data-testid="work-order-list">
@@ -4856,6 +5292,123 @@ function App() {
             </div>
           </section>
 
+          <section className="panel safety-emergency-panel">
+            <PanelHeader title="消防安防应急联动" meta="火灾报警 / 门禁安防 / BIM / 告警 / 工单 / 应急步骤" />
+            <div className="medical-gas-workbench" data-testid="safety-emergency-board">
+              <section className="medical-gas-summary">
+                <h2>联动总览</h2>
+                <div className="medical-gas-kpis">
+                  <article>
+                    <span>联动节点</span>
+                    <strong>{safetyEmergencyBoard.kpis.nodeCount}</strong>
+                  </article>
+                  <article>
+                    <span>活动告警</span>
+                    <strong>{safetyEmergencyBoard.kpis.activeAlarms}</strong>
+                  </article>
+                  <article>
+                    <span>严重节点</span>
+                    <strong>{safetyEmergencyBoard.kpis.criticalNodes}</strong>
+                  </article>
+                  <article>
+                    <span>应急工单</span>
+                    <strong>{safetyEmergencyBoard.kpis.openWorkOrders}</strong>
+                  </article>
+                </div>
+                {safetyEmergencyBoard.nodes.map((node) => (
+                  <button
+                    className={`medical-gas-zone-card ${safetyEmergencyNodeDetail.node.nodeCode === node.nodeCode ? 'selected' : ''}`}
+                    key={node.nodeCode}
+                    type="button"
+                    onClick={() => void loadSafetyEmergencyNodeDetail(node.nodeCode)}
+                  >
+                    <strong>{node.name}</strong>
+                    <span>{node.nodeCode} / {node.monitoringPointCode} / {safetyEmergencyStatusLabels[node.status]}</span>
+                    <small>{node.location.building} / {node.location.room} / {node.location.bimElementId}</small>
+                  </button>
+                ))}
+              </section>
+
+              <section className="medical-gas-detail">
+                <h2>节点详情</h2>
+                <div className="detail-title">
+                  <strong>{safetyEmergencyNodeDetail.node.name}</strong>
+                  <span>{safetyEmergencyStatusLabels[safetyEmergencyNodeDetail.node.status]}</span>
+                </div>
+                <dl className="detail-list">
+                  <div>
+                    <dt>BIM</dt>
+                    <dd>{safetyEmergencyNodeDetail.node.location.bimElementId}</dd>
+                  </div>
+                  <div>
+                    <dt>点位</dt>
+                    <dd>{safetyEmergencyNodeDetail.node.monitoringPointCode}</dd>
+                  </div>
+                  <div>
+                    <dt>资产</dt>
+                    <dd>{safetyEmergencyNodeDetail.node.assetCode}</dd>
+                  </div>
+                  <div>
+                    <dt>来源</dt>
+                    <dd>{safetyEmergencyNodeDetail.sourceEvidence.flatMap((item) => item.sources).join('、')}</dd>
+                  </div>
+                </dl>
+                <p className="detail-note">
+                  {safetyEmergencyNodeDetail.node.linkedSystems.join(' / ')}
+                </p>
+              </section>
+
+              <section className="medical-gas-linked">
+                <h2>应急步骤</h2>
+                {safetyEmergencyNodeDetail.responseProcedure.map((step) => (
+                  <article key={step.stepCode}>
+                    <strong>{step.sequence}. {step.action}</strong>
+                    <span>{step.responsibleRole} / {step.targetMinutes} 分钟</span>
+                    <small>{step.requiresConfirmation ? '需要确认留痕' : '复盘留痕'}</small>
+                  </article>
+                ))}
+                {safetyEmergencyBoard.safetyAssets.map((asset) => (
+                  <article key={asset.assetCode}>
+                    <strong>{asset.assetCode}</strong>
+                    <span>{asset.name} / {asset.ownerTeam}</span>
+                    <small>{asset.location.bimElementId}</small>
+                  </article>
+                ))}
+              </section>
+
+              <section className="medical-gas-actions">
+                <h2>告警与调度联动</h2>
+                <div className="action-bar">
+                  <button data-testid="safety-emergency-ingest-fire" type="button" onClick={() => void ingestSafetyEmergencyFire()}>
+                    模拟火警信号
+                  </button>
+                  <button data-testid="safety-emergency-convert-alarm" type="button" onClick={() => void convertSafetyEmergencyAlarm()}>
+                    告警转工单
+                  </button>
+                  <button data-testid="safety-emergency-open-dispatch" type="button" onClick={() => void openConvertedSafetyEmergencyWorkOrder()}>
+                    进入调度池
+                  </button>
+                </div>
+                <div className="medical-gas-flow-list">
+                  {safetyEmergencyNodeDetail.activeAlarms.map((alarm) => (
+                    <article key={alarm.alarmNo}>
+                      <strong>{alarm.alarmNo}</strong>
+                      <span>{alarm.pointCode} / {telemetryRiskLabels[alarm.riskLevel]} / {alarmStatusLabels[alarm.status]}</span>
+                      <small>{alarm.workOrderNo ?? '应急响应待转工单'}</small>
+                    </article>
+                  ))}
+                  {safetyEmergencyNodeDetail.openWorkOrders.map((order) => (
+                    <article key={order.workOrderNo}>
+                      <strong>{order.workOrderNo}</strong>
+                      <span>{order.title} / {priorityLabels[order.priority]}</span>
+                      <small>{order.location.bimElementId}</small>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </section>
+
           <section className="panel spatial-panel">
             <PanelHeader title="BIM 空间业务定位" meta="设备 / 告警 / 工单同图层" />
             {activePage === 'spatial' ? (
@@ -5451,6 +6004,28 @@ function buildLocalEnergyPerformanceDetail(areaCode: string): EnergyPerformanceA
     ),
     operationPerformance: localEnergyPerformanceBoard.operationPerformance,
     sourceEvidence: energyPerformanceSourceEvidence,
+  }
+}
+
+function buildLocalSafetyEmergencyDetail(nodeCode: string): SafetyEmergencyNodeDetail {
+  const node =
+    localSafetyEmergencyBoard.nodes.find((item) => item.nodeCode === nodeCode) ??
+    localSafetyEmergencyBoard.nodes[0]
+
+  return {
+    node,
+    monitoringPoint: buildLocalIotPointDetail(node.monitoringPointCode),
+    safetyAsset: {
+      asset: localSafetyAssets.find((asset) => asset.assetCode === node.assetCode) ?? localSafetyAssets[0],
+      plans: [],
+      tasks: [],
+      lifecycle: [],
+      sourceEvidence: safetyEmergencySourceEvidence,
+    },
+    activeAlarms: localSafetyEmergencyBoard.activeAlarms.filter((alarm) => alarm.pointCode === node.monitoringPointCode),
+    openWorkOrders: localSafetyEmergencyBoard.openWorkOrders.filter((order) => order.location.bimElementId === node.location.bimElementId),
+    responseProcedure: localSafetyProcedure,
+    sourceEvidence: safetyEmergencySourceEvidence,
   }
 }
 

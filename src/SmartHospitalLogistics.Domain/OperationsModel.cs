@@ -92,7 +92,9 @@ public enum IotSystemCategory
     WaterSupplyDrainage,
     MedicalGas,
     EnvironmentQuality,
-    Sewage
+    Sewage,
+    FireSafety,
+    SecurityIntelligence
 }
 
 public enum TelemetryRiskLevel
@@ -813,6 +815,82 @@ public sealed record EnergyPerformanceAreaDetail(
     IReadOnlyList<EnergyTrendPoint> Trend,
     IReadOnlyList<EnergySavingRecommendation> SavingRecommendations,
     IReadOnlyList<OperationPerformanceMetric> OperationPerformance,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
+
+public enum SafetyEmergencyEventType
+{
+    FireAlarm,
+    ElectricalFire,
+    FireDoor,
+    CombustibleGas,
+    AccessControl,
+    VideoSecurity,
+    EmergencyResponse
+}
+
+public enum SafetyEmergencyNodeStatus
+{
+    Normal,
+    Warning,
+    Critical,
+    Commanding,
+    Closed
+}
+
+public enum EmergencyResponseLevel
+{
+    Routine,
+    Attention,
+    LevelOne,
+    LevelTwo
+}
+
+public sealed record SafetyEmergencyNode(
+    string NodeCode,
+    string Name,
+    SafetyEmergencyEventType EventType,
+    SpatialLocation Location,
+    string ResponsibleTeam,
+    string MonitoringPointCode,
+    string AssetCode,
+    SafetyEmergencyNodeStatus Status,
+    EmergencyResponseLevel ResponseLevel,
+    IReadOnlyList<string> LinkedSystems,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
+
+public sealed record EmergencyResponseStep(
+    string StepCode,
+    int Sequence,
+    string Action,
+    string ResponsibleRole,
+    int TargetMinutes,
+    bool RequiresConfirmation);
+
+public sealed record SafetyEmergencyBoardKpi(
+    int NodeCount,
+    int ActiveAlarms,
+    int CriticalNodes,
+    int OpenWorkOrders,
+    int ActiveEmergencyEvents);
+
+public sealed record SafetyEmergencyBoard(
+    DateTimeOffset GeneratedAt,
+    IReadOnlyList<SafetyEmergencyNode> Nodes,
+    IReadOnlyList<IotMonitoringPoint> MonitoringPoints,
+    IReadOnlyList<AssetLedgerItem> SafetyAssets,
+    IReadOnlyList<MonitoringAlarmEvent> ActiveAlarms,
+    IReadOnlyList<WorkOrder> OpenWorkOrders,
+    IReadOnlyList<EmergencyResponseStep> ResponseProcedure,
+    IReadOnlyList<FeatureEvidence> SourceEvidence,
+    SafetyEmergencyBoardKpi Kpis);
+
+public sealed record SafetyEmergencyNodeDetail(
+    SafetyEmergencyNode Node,
+    IotPointDetail? MonitoringPoint,
+    AssetMaintenanceDetail? SafetyAsset,
+    IReadOnlyList<MonitoringAlarmEvent> ActiveAlarms,
+    IReadOnlyList<WorkOrder> OpenWorkOrders,
+    IReadOnlyList<EmergencyResponseStep> ResponseProcedure,
     IReadOnlyList<FeatureEvidence> SourceEvidence);
 
 public sealed record FeatureEvidence(

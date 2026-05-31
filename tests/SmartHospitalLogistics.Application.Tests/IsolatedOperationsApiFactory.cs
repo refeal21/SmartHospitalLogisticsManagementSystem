@@ -24,6 +24,7 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
             services.RemoveAll<IHvacPersistence>();
             services.RemoveAll<IWaterOperationsPersistence>();
             services.RemoveAll<IEnergyPerformancePersistence>();
+            services.RemoveAll<ISafetyEmergencyPersistence>();
             services.RemoveAll<WorkOrderDispatchService>();
             services.RemoveAll<IWorkOrderDispatchService>();
             services.RemoveAll<IWorkOrderIntakeService>();
@@ -37,6 +38,7 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
             services.RemoveAll<IHvacService>();
             services.RemoveAll<IWaterOperationsService>();
             services.RemoveAll<IEnergyPerformanceService>();
+            services.RemoveAll<ISafetyEmergencyService>();
 
             services.AddSingleton<IWorkOrderPersistence>(_ =>
                 new SqliteWorkOrderPersistence(Path.Combine(_dbDirectory, "work-orders.db")));
@@ -56,6 +58,8 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
                 new SqliteWaterOperationsPersistence(Path.Combine(_dbDirectory, "water.db")));
             services.AddSingleton<IEnergyPerformancePersistence>(_ =>
                 new SqliteEnergyPerformancePersistence(Path.Combine(_dbDirectory, "energy.db")));
+            services.AddSingleton<ISafetyEmergencyPersistence>(_ =>
+                new SqliteSafetyEmergencyPersistence(Path.Combine(_dbDirectory, "safety.db")));
 
             services.AddSingleton<WorkOrderDispatchService>();
             services.AddSingleton<IWorkOrderDispatchService>(provider => provider.GetRequiredService<WorkOrderDispatchService>());
@@ -70,6 +74,7 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
             services.AddSingleton<IHvacService, HvacService>();
             services.AddSingleton<IWaterOperationsService, WaterOperationsService>();
             services.AddSingleton<IEnergyPerformanceService, EnergyPerformanceService>();
+            services.AddSingleton<ISafetyEmergencyService, SafetyEmergencyService>();
         });
     }
 

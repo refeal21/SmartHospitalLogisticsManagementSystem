@@ -36,19 +36,32 @@ public sealed class IotIntegrationService : IIotIntegrationService
         var persisted = _persistence?.Load();
         if (persisted is not null && (persisted.Systems.Count > 0 || persisted.Points.Count > 0))
         {
-            _systems = persisted.Systems;
+            _systems = persisted.Systems
+                .Concat(BuildSafetySystems().Where(system => !persisted.Systems.Any(existing => existing.Category == system.Category)))
+                .ToArray();
             _points = persisted.Points.ToDictionary(point => point.PointCode, StringComparer.OrdinalIgnoreCase);
-            _thresholdRules = persisted.ThresholdRules;
+            MergeSafetySeedPoints();
+            _thresholdRules = persisted.ThresholdRules
+                .Concat(BuildSafetyThresholdRules().Where(rule => !persisted.ThresholdRules.Any(existing =>
+                    string.Equals(existing.PointCode, rule.PointCode, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(existing.MetricCode, rule.MetricCode, StringComparison.OrdinalIgnoreCase))))
+                .ToArray();
             _readings = persisted.Readings
+                .Concat(BuildSafetyReadings().Where(reading => !persisted.Readings.Any(existing =>
+                    string.Equals(existing.PointCode, reading.PointCode, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(existing.MetricCode, reading.MetricCode, StringComparison.OrdinalIgnoreCase))))
                 .GroupBy(reading => reading.PointCode, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(group => group.Key, group => group.OrderByDescending(item => item.CollectedAt).ToList(), StringComparer.OrdinalIgnoreCase);
+            PersistSeedData();
         }
         else
         {
-            _systems = BuildSystems();
+            _systems = BuildSystems().Concat(BuildSafetySystems()).ToArray();
             _points = BuildPoints().ToDictionary(point => point.PointCode, StringComparer.OrdinalIgnoreCase);
-            _thresholdRules = BuildThresholdRules();
+            MergeSafetySeedPoints();
+            _thresholdRules = BuildThresholdRules().Concat(BuildSafetyThresholdRules()).ToArray();
             _readings = BuildReadings()
+            .Concat(BuildSafetyReadings())
             .GroupBy(reading => reading.PointCode, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.OrderByDescending(item => item.CollectedAt).ToList(), StringComparer.OrdinalIgnoreCase);
             PersistSeedData();
@@ -178,6 +191,12 @@ public sealed class IotIntegrationService : IIotIntegrationService
         new IotSystemProfile(IotSystemCategory.Sewage, "污水站监测", ["医疗废水", "污水处理站", "水质监测"], ["给排水班工作人员", "第三方服务方"], ["控制室电脑端", "移动端"])
     ];
 
+    private static IotSystemProfile[] BuildSafetySystems() =>
+    [
+        new IotSystemProfile(IotSystemCategory.FireSafety, "火灾自动报警及联动控制系统", ["火灾自动报警", "电气火灾监控", "防火门监控", "可燃气体探测报警"], ["消防值班人员", "总务处管理者"], ["控制室电脑端", "移动端"]),
+        new IotSystemProfile(IotSystemCategory.SecurityIntelligence, "公共安全与智能化系统", ["门禁", "视频安防", "公共安全报警", "弱电机房"], ["保卫处值班人员", "信息化管理者"], ["控制室电脑端", "移动端"])
+    ];
+
     private static IotMonitoringPoint[] BuildPoints()
     {
         var energyRoom = new SpatialLocation("同仁亦庄院区", "能源中心", "B1", "变配电室", "BIM-ENE-B1-PDU");
@@ -275,6 +294,50 @@ public sealed class IotIntegrationService : IIotIntegrationService
         ];
     }
 
+    private void MergeSafetySeedPoints()
+    {
+        foreach (var point in BuildSafetyPoints())
+        {
+            _points.TryAdd(point.PointCode, point);
+        }
+    }
+
+    private static IotMonitoringPoint[] BuildSafetyPoints()
+    {
+        var outpatientFire = new SpatialLocation("同仁亦庄院区", "门诊医技楼", "F1", "门诊共享大厅", "BIM-SEC-OPD-1F-FIRE");
+        var emergencyAccess = new SpatialLocation("同仁亦庄院区", "急诊楼", "F1", "急诊出入口", "BIM-SEC-ER-ACCESS");
+
+        return
+        [
+            new IotMonitoringPoint(
+                "FIRE-SMOKE-OPD-1F-01",
+                "门诊 1F 共享大厅烟感报警点",
+                IotSystemCategory.FireSafety,
+                outpatientFire,
+                "FIRE-ALARM-OPD-1F",
+                "fire-alarm-adapter",
+                [
+                    new IotMetricDefinition("smoke_density", "烟雾浓度", "%obs/m", "decimal", "火灾报警"),
+                    new IotMetricDefinition("device_status", "设备状态", "", "enum", "消防设备状态"),
+                    new IotMetricDefinition("linkage_status", "联动状态", "", "enum", "消防联动状态")
+                ],
+                BuildSourceEvidence()),
+            new IotMonitoringPoint(
+                "SEC-ACCESS-ER-01",
+                "急诊出入口门禁安防点",
+                IotSystemCategory.SecurityIntelligence,
+                emergencyAccess,
+                "SEC-ACCESS-ER-DOOR",
+                "security-adapter",
+                [
+                    new IotMetricDefinition("forced_open", "强开次数", "count", "integer", "门禁异常"),
+                    new IotMetricDefinition("device_online", "在线状态", "", "enum", "安防设备在线"),
+                    new IotMetricDefinition("alarm_status", "报警状态", "", "enum", "公共安全报警")
+                ],
+                BuildSourceEvidence())
+        ];
+    }
+
     private static TelemetryThresholdRule[] BuildThresholdRules() =>
     [
         new TelemetryThresholdRule("PWR-LV-B1-IN-01", "voltage", ThresholdDirection.OutsideRange, 200m, 245m, 190m, 255m, "低压进线电压需保持在安全范围"),
@@ -291,6 +354,18 @@ public sealed class IotIntegrationService : IIotIntegrationService
         new TelemetryReading("MEDGAS-O2-8F", "pressure", 0.39m, "MPa", SeedTime.AddMinutes(-5), TelemetryRiskLevel.Normal, "医用氧气压力正常"),
         new TelemetryReading("ENV-WARD-CO2-8F", "co2", 960m, "ppm", SeedTime.AddMinutes(-3), TelemetryRiskLevel.Normal, "住院病区 CO2 正常"),
         new TelemetryReading("SEWAGE-STATION-01", "cod", 138m, "mg/L", SeedTime.AddMinutes(-8), TelemetryRiskLevel.Normal, "污水站 COD 正常")
+    ];
+
+    private static TelemetryThresholdRule[] BuildSafetyThresholdRules() =>
+    [
+        new TelemetryThresholdRule("FIRE-SMOKE-OPD-1F-01", "smoke_density", ThresholdDirection.Above, null, 0.8m, null, 1.2m, "门诊大厅烟感超过火警阈值需消防联动确认"),
+        new TelemetryThresholdRule("SEC-ACCESS-ER-01", "forced_open", ThresholdDirection.Above, null, 0m, null, 1m, "急诊门禁强开需保卫处联动确认")
+    ];
+
+    private static TelemetryReading[] BuildSafetyReadings() =>
+    [
+        new TelemetryReading("FIRE-SMOKE-OPD-1F-01", "smoke_density", 0.1m, "%obs/m", SeedTime.AddMinutes(-6), TelemetryRiskLevel.Normal, "门诊大厅烟感正常"),
+        new TelemetryReading("SEC-ACCESS-ER-01", "forced_open", 0m, "count", SeedTime.AddMinutes(-7), TelemetryRiskLevel.Normal, "急诊出入口门禁正常")
     ];
 
     private static FeatureEvidence[] BuildSourceEvidence() =>

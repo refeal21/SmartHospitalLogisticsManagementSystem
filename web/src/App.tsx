@@ -11,6 +11,7 @@ type WorkOrderStatus =
   | 'Suspended'
   | 'Transferred'
   | 'PendingAcceptance'
+  | 'PendingEvaluation'
   | 'Closed'
   | 'Escalated'
 type FacilityStatus = 'Normal' | 'Warning' | 'Fault' | 'Maintenance'
@@ -881,6 +882,7 @@ const statusLabels: Record<WorkOrderStatus | FacilityStatus | SignalStatus, stri
   Suspended: '已挂单',
   Transferred: '已转单',
   PendingAcceptance: '待验收',
+  PendingEvaluation: '待评价',
   Closed: '已关闭',
   Escalated: '已升级',
   Normal: '正常',
@@ -1758,7 +1760,7 @@ function App() {
                   <h2>验收判断</h2>
                   <p>核对完工说明、SLA 结果、现场证据和服务对象反馈，未达标可驳回整改。</p>
                   <div className="action-bar">
-                    <button type="button" onClick={() => void transitionSelected('AcceptCompletion', '验收', 'InProgress')}>
+                    <button type="button" onClick={() => void transitionSelected('AcceptCompletion', '验收', 'PendingEvaluation')}>
                       验收通过
                     </button>
                     <button type="button" onClick={() => void transitionSelected('RejectCompletion', '驳回', 'InProgress')}>

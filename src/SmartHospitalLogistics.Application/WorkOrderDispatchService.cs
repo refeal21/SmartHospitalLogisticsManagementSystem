@@ -90,7 +90,7 @@ public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
             }
 
             var current = _workOrders[index];
-            if (current.Status is WorkOrderStatus.Closed or WorkOrderStatus.PendingAcceptance)
+            if (current.Status is WorkOrderStatus.Closed or WorkOrderStatus.PendingAcceptance or WorkOrderStatus.PendingEvaluation)
             {
                 return new DispatchOperationResult(false, $"当前状态 {current.Status} 不允许派工", BuildDetail(current));
             }
@@ -151,10 +151,10 @@ public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
             WorkOrderTransitionAction.Complete when current.Status is WorkOrderStatus.Accepted or WorkOrderStatus.Transferred
                 => (WorkOrderStatus.PendingAcceptance, "完工"),
             WorkOrderTransitionAction.AcceptCompletion when current.Status == WorkOrderStatus.PendingAcceptance
-                => (WorkOrderStatus.Accepted, "验收"),
+                => (WorkOrderStatus.PendingEvaluation, "验收"),
             WorkOrderTransitionAction.RejectCompletion when current.Status == WorkOrderStatus.PendingAcceptance
                 => (WorkOrderStatus.Accepted, "驳回"),
-            WorkOrderTransitionAction.Evaluate when current.Status is WorkOrderStatus.Accepted or WorkOrderStatus.PendingAcceptance
+            WorkOrderTransitionAction.Evaluate when current.Status == WorkOrderStatus.PendingEvaluation
                 => (WorkOrderStatus.Closed, "评价"),
             WorkOrderTransitionAction.Escalate when current.Status is not WorkOrderStatus.Closed
                 => (WorkOrderStatus.Escalated, "升级"),
@@ -231,7 +231,8 @@ public sealed class WorkOrderDispatchService : IWorkOrderDispatchService
             WorkOrderStatus.Dispatched or WorkOrderStatus.Transferred => ["Accept", "Transfer", "Escalate"],
             WorkOrderStatus.Accepted => ["Suspend", "Transfer", "Complete", "Escalate"],
             WorkOrderStatus.Suspended => ["Accept", "Transfer", "Escalate"],
-            WorkOrderStatus.PendingAcceptance => ["AcceptCompletion", "RejectCompletion", "Evaluate", "Escalate"],
+            WorkOrderStatus.PendingAcceptance => ["AcceptCompletion", "RejectCompletion", "Escalate"],
+            WorkOrderStatus.PendingEvaluation => ["Evaluate", "Escalate"],
             _ => []
         };
 

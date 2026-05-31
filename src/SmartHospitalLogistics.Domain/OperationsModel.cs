@@ -17,6 +17,7 @@ public enum WorkOrderStatus
     Suspended,
     Transferred,
     PendingAcceptance,
+    PendingEvaluation,
     Closed,
     Escalated
 }

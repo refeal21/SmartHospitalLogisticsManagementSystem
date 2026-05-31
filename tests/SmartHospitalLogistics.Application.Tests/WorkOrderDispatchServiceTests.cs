@@ -68,9 +68,30 @@ public sealed class WorkOrderDispatchServiceTests
         Assert.Equal(WorkOrderStatus.Suspended, suspended.Detail?.WorkOrder.Status);
         Assert.Equal(WorkOrderStatus.Transferred, transferred.Detail?.WorkOrder.Status);
         Assert.Equal(WorkOrderStatus.PendingAcceptance, completed.Detail?.WorkOrder.Status);
-        Assert.Equal(WorkOrderStatus.Accepted, acceptedCompletion.Detail?.WorkOrder.Status);
+        Assert.Equal(WorkOrderStatus.PendingEvaluation, acceptedCompletion.Detail?.WorkOrder.Status);
         Assert.Equal(WorkOrderStatus.Closed, evaluated.Detail?.WorkOrder.Status);
         Assert.Contains(evaluated.Detail!.Timeline, entry => entry.Action == "评价" && entry.Rating == 5);
+    }
+
+    [Fact]
+    public void EvaluationIsAllowedOnlyAfterAcceptanceReview()
+    {
+        var beforeAcceptance = _service.Transition(
+            "WO-20260530-0004",
+            new TransitionWorkOrderCommand(WorkOrderTransitionAction.Evaluate, "护士站", "未验收不能评价", Rating: 3));
+
+        var acceptedCompletion = _service.Transition(
+            "WO-20260530-0004",
+            new TransitionWorkOrderCommand(WorkOrderTransitionAction.AcceptCompletion, "总务处管理者", "验收通过"));
+
+        var evaluated = _service.Transition(
+            "WO-20260530-0004",
+            new TransitionWorkOrderCommand(WorkOrderTransitionAction.Evaluate, "护士站", "效果满意", Rating: 5));
+
+        Assert.False(beforeAcceptance.Succeeded);
+        Assert.Equal(WorkOrderStatus.PendingEvaluation, acceptedCompletion.Detail?.WorkOrder.Status);
+        Assert.True(evaluated.Succeeded, evaluated.ErrorMessage);
+        Assert.Equal(WorkOrderStatus.Closed, evaluated.Detail?.WorkOrder.Status);
     }
 
     [Fact]

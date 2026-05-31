@@ -282,17 +282,6 @@ h2 {
 
 .content-grid[data-active-page='dispatch'] > .dispatch-panel,
 .content-grid[data-active-page='overview'] > .overview-command-panel,
-.content-grid[data-active-page='overview'] > .dispatch-panel,
-.content-grid[data-active-page='overview'] > .asset-maintenance-panel,
-.content-grid[data-active-page='overview'] > .iot-panel,
-.content-grid[data-active-page='overview'] > .alert-panel,
-.content-grid[data-active-page='overview'] > .team-panel,
-.content-grid[data-active-page='overview'] > .spatial-panel,
-.content-grid[data-active-page='overview'] > .module-panel,
-.content-grid[data-active-page='overview'] > .evidence-panel,
-.content-grid[data-active-page='overview'] > .catalog-panel,
-.content-grid[data-active-page='overview'] > .competitor-panel,
-.content-grid[data-active-page='overview'] > .phase-panel,
 .content-grid[data-active-page='assets'] > .asset-maintenance-panel,
 .content-grid[data-active-page='iot'] > .iot-panel,
 .content-grid[data-active-page='alerts'] > .alert-panel,
@@ -364,7 +353,8 @@ h2 {
 
 .overview-primary,
 .overview-risk-list,
-.overview-route {
+.overview-route,
+.overview-lane-card {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface-soft);
@@ -379,6 +369,7 @@ h2 {
 
 .overview-primary span,
 .overview-risk-list span,
+.overview-lane-card span,
 .overview-route li {
   color: var(--muted);
   font-size: 13px;
@@ -402,9 +393,30 @@ h2 {
 }
 
 .overview-risk-list,
-.overview-route {
+.overview-route,
+.overview-lane-card {
   display: grid;
   gap: 10px;
+}
+
+.overview-lane-card {
+  background: #ffffff;
+}
+
+.overview-lane-card strong {
+  color: var(--ink);
+  font-size: 30px;
+  line-height: 1;
+}
+
+.overview-lane-card p {
+  color: #536c82;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.overview-lane-card button {
+  justify-self: start;
 }
 
 .overview-risk-item {

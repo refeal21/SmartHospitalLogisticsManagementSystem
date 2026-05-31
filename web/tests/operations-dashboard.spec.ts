@@ -5,51 +5,54 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
     await page.goto('/')
 
     await expect(page.getByRole('heading', { name: '医院后勤管理工作台' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '服务受理' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '工单调度' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '设备台账' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '预警池' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '合同管理' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '服务受理', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: '工单调度', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: '设备台账', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: '预警池', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: '合同管理', exact: true })).toBeVisible()
 
-    await expect(page.getByRole('heading', { name: '工单调度中心' })).toBeVisible()
-    await expect(page.getByText('WO-20260530-0001')).toBeVisible()
-    await expect(page.getByText('医废暂存间负压异常处置').first()).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'BIM 空间业务定位' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: '环境预警池' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: '班组负载' })).toBeVisible()
-    await expect(page.getByText('29 个一级模块 / PPT 总览 156 个子项')).toBeVisible()
+    await expect(page.getByTestId('overview-command-center')).toBeVisible()
+    await expect(page.getByRole('heading', { name: '调度闭环' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '资产巡检' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '告警联动' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '绩效整改' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '工单调度中心' })).toBeHidden()
 
     await expect(page.getByText(/API 实时数据|本地业务种子数据/)).toBeVisible()
   })
 
   test('展示PPT、北建院和中科医信驱动的来源追溯矩阵', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/#source-trace')
 
     await expect(page.getByRole('heading', { name: '来源可追溯功能目录' })).toBeVisible()
-    await expect(page.getByText('PPT', { exact: true }).first()).toBeVisible()
-    await expect(page.getByText('北建院', { exact: true }).first()).toBeVisible()
-    await expect(page.getByText('中科医信', { exact: true }).first()).toBeVisible()
-    await expect(page.getByText('工单全流程管理', { exact: true }).first()).toBeVisible()
-    await expect(page.getByText('供配电监测', { exact: true }).first()).toBeVisible()
+    const evidencePage = page.locator(".content-grid[data-active-page='evidence'] > .evidence-panel")
+    await expect(evidencePage.getByText('PPT', { exact: true }).first()).toBeVisible()
+    await expect(evidencePage.getByText('北建院', { exact: true }).first()).toBeVisible()
+    await expect(evidencePage.getByText('中科医信', { exact: true }).first()).toBeVisible()
+    await expect(evidencePage.getByText('工单全流程管理', { exact: true }).first()).toBeVisible()
+    await expect(evidencePage.getByText('供配电监测', { exact: true }).first()).toBeVisible()
 
     await expect(page.getByRole('heading', { name: '北建院客户数据目录' })).toBeVisible()
-    await expect(page.getByText('强电系统', { exact: true }).first()).toBeVisible()
-    await expect(page.getByText('供暖空调系统', { exact: true }).first()).toBeVisible()
-    await expect(page.getByText('智慧卫生间').first()).toBeVisible()
+    const catalogPage = page.locator(".content-grid[data-active-page='evidence'] > .catalog-panel")
+    await expect(catalogPage.getByText('强电系统', { exact: true }).first()).toBeVisible()
+    await expect(catalogPage.getByText('供暖空调系统', { exact: true }).first()).toBeVisible()
+    await expect(catalogPage.getByText('智慧卫生间').first()).toBeVisible()
 
     await expect(page.getByRole('heading', { name: '竞品功能颗粒度' })).toBeVisible()
-    await expect(page.getByText('智慧医院运行保障系统基础服务模块')).toBeVisible()
-    await expect(page.getByText('医疗废弃物综合管理系统')).toBeVisible()
-    await expect(page.getByText('综合能耗智能监管系统')).toBeVisible()
+    const competitorPage = page.locator(".content-grid[data-active-page='evidence'] > .competitor-panel")
+    await expect(competitorPage.getByText('智慧医院运行保障系统基础服务模块')).toBeVisible()
+    await expect(competitorPage.getByText('医疗废弃物综合管理系统')).toBeVisible()
+    await expect(competitorPage.getByText('综合能耗智能监管系统')).toBeVisible()
 
     await expect(page.getByRole('heading', { name: 'V1实施顺序' })).toBeVisible()
-    await expect(page.getByText('基础平台与工作台', { exact: true }).first()).toBeVisible()
-    await expect(page.getByText('一站式服务与工单', { exact: true }).first()).toBeVisible()
-    await expect(page.getByText('综合管理', { exact: true }).first()).toBeVisible()
+    const phasePage = page.locator(".content-grid[data-active-page='evidence'] > .phase-panel")
+    await expect(phasePage.getByText('基础平台与工作台', { exact: true }).first()).toBeVisible()
+    await expect(phasePage.getByText('一站式服务与工单', { exact: true }).first()).toBeVisible()
+    await expect(phasePage.getByText('综合管理', { exact: true }).first()).toBeVisible()
   })
 
   test('一站式工单调度支持派工、接单和详情追踪', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/#工单调度')
 
     await expect(page.getByRole('heading', { name: '工单池' })).toBeVisible()
     await expect(page.getByRole('heading', { name: '派工建议' })).toBeVisible()
@@ -257,7 +260,7 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
   })
 
   test('资产台账与巡检保养支持异常转工单', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/#设备台账')
 
     await expect(page.getByRole('heading', { name: '资产台账与巡检保养' })).toBeVisible()
     await expect(page.getByRole('heading', { name: '设备设施台账' })).toBeVisible()
@@ -273,7 +276,7 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
     }
 
     await expect(page.getByText('已转工单').first()).toBeVisible()
-    await expect(page.getByText(/WO-MT-20260530-0002|WO-MT-20260530-0001/).first()).toBeVisible()
+    await expect(page.getByTestId('maintenance-generated-workorder')).toContainText(/WO-MT-/)
   })
 
   test('资产巡检异常工单进入调度池并保留来源证据', async ({ page }) => {
@@ -302,7 +305,7 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
   })
 
   test('客户物联点位接入支持字段查看和异常读数判定', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/#环境点位')
 
     await expect(page.getByRole('heading', { name: '客户物联点位接入' })).toBeVisible()
     await expect(page.getByRole('heading', { name: '点位目录' })).toBeVisible()
@@ -310,8 +313,8 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
     await expect(page.getByRole('heading', { name: '阈值与读数' })).toBeVisible()
 
     await page.getByTestId('iot-point-list').getByRole('button', { name: /MEDGAS-O2-8F/ }).click()
-    await expect(page.getByText('BIM-IPD-F8-WARD').first()).toBeVisible()
-    await expect(page.getByText('氧气压力 / 医气压力').first()).toBeVisible()
+    await expect(page.getByTestId('iot-point-detail')).toContainText('BIM-IPD-F8-WARD')
+    await expect(page.getByTestId('iot-point-detail')).toContainText('氧气压力 / 医气压力')
 
     await page.getByTestId('iot-point-detail').getByRole('button', { name: '模拟异常读数' }).click()
     await expect(page.getByText('最新风险：严重')).toBeVisible()
@@ -393,9 +396,9 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
 
     await expect(page.getByRole('heading', { name: '医院后勤管理工作台' })).toBeVisible()
     await expect(page.getByRole('button', { name: '工单调度' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: '工单调度中心' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: '环境预警池' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: '来源可追溯功能目录' })).toBeVisible()
+    await expect(page.getByTestId('overview-command-center')).toBeVisible()
+    await expect(page.getByRole('heading', { name: '调度闭环' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '告警联动' })).toBeVisible()
 
     const hasHorizontalOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth > window.innerWidth + 1,

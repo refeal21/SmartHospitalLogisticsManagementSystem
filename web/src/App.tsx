@@ -4654,6 +4654,46 @@ function App() {
                   <li>验收评价与治理复盘</li>
                 </ol>
               </section>
+
+              <section className="overview-lane-card">
+                <span>一站式服务</span>
+                <h2>调度闭环</h2>
+                <strong>{dispatchBoard.slaRisk.openWorkOrders}</strong>
+                <p>未闭环工单，最高风险：{dispatchBoard.slaRisk.highestRiskLevel}</p>
+                <button type="button" onClick={() => openServiceWorkflowTab(serviceWorkflowTabs[1])}>
+                  打开工单池
+                </button>
+              </section>
+
+              <section className="overview-lane-card">
+                <span>设备设施</span>
+                <h2>资产巡检</h2>
+                <strong>{assetBoard.kpis.riskAssets}</strong>
+                <p>风险资产，待办巡检：{assetBoard.dueTasks.length}</p>
+                <button type="button" onClick={() => openWorkspacePage('设备台账')}>
+                  查看资产
+                </button>
+              </section>
+
+              <section className="overview-lane-card">
+                <span>物联与 BIM</span>
+                <h2>告警联动</h2>
+                <strong>{alarmBoard.alarms.filter((alarm) => alarm.status !== 'Closed').length}</strong>
+                <p>活动告警，点位目录：{iotCatalog.points.length}</p>
+                <button type="button" onClick={() => openWorkspacePage('预警池')}>
+                  打开预警池
+                </button>
+              </section>
+
+              <section className="overview-lane-card">
+                <span>运营治理</span>
+                <h2>绩效整改</h2>
+                <strong>{platformGovernanceBoard.kpis.openActionCount}</strong>
+                <p>整改动作，治理项：{platformGovernanceBoard.kpis.controlCount}</p>
+                <button type="button" onClick={() => openWorkspacePage('角色权限')}>
+                  查看治理
+                </button>
+              </section>
             </div>
           </section>
 

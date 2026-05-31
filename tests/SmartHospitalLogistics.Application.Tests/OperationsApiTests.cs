@@ -2,13 +2,12 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Mvc.Testing;
 using SmartHospitalLogistics.Application;
 using SmartHospitalLogistics.Domain;
 
 namespace SmartHospitalLogistics.Application.Tests;
 
-public sealed class OperationsApiTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class OperationsApiTests : IClassFixture<IsolatedOperationsApiFactory>
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -17,7 +16,7 @@ public sealed class OperationsApiTests : IClassFixture<WebApplicationFactory<Pro
 
     private readonly HttpClient _client;
 
-    public OperationsApiTests(WebApplicationFactory<Program> factory)
+    public OperationsApiTests(IsolatedOperationsApiFactory factory)
     {
         _client = factory.CreateClient();
     }

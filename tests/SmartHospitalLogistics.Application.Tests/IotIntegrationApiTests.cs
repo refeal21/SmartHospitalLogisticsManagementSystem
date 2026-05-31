@@ -2,12 +2,11 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Mvc.Testing;
 using SmartHospitalLogistics.Domain;
 
 namespace SmartHospitalLogistics.Application.Tests;
 
-public sealed class IotIntegrationApiTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class IotIntegrationApiTests : IClassFixture<IsolatedOperationsApiFactory>
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -16,7 +15,7 @@ public sealed class IotIntegrationApiTests : IClassFixture<WebApplicationFactory
 
     private readonly HttpClient _client;
 
-    public IotIntegrationApiTests(WebApplicationFactory<Program> factory)
+    public IotIntegrationApiTests(IsolatedOperationsApiFactory factory)
     {
         _client = factory.CreateClient();
     }

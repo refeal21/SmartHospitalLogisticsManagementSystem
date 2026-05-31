@@ -23,14 +23,31 @@ public sealed class IotIntegrationService : IIotIntegrationService
 
     private readonly Dictionary<string, List<TelemetryReading>> _readings;
 
-    public IotIntegrationService()
+    private readonly IIotIntegrationPersistence? _persistence;
+
+    public IotIntegrationService(IIotIntegrationPersistence? persistence = null)
     {
-        _systems = BuildSystems();
-        _points = BuildPoints().ToDictionary(point => point.PointCode, StringComparer.OrdinalIgnoreCase);
-        _thresholdRules = BuildThresholdRules();
-        _readings = BuildReadings()
+        _persistence = persistence;
+        var persisted = _persistence?.Load();
+        if (persisted is not null && (persisted.Systems.Count > 0 || persisted.Points.Count > 0))
+        {
+            _systems = persisted.Systems;
+            _points = persisted.Points.ToDictionary(point => point.PointCode, StringComparer.OrdinalIgnoreCase);
+            _thresholdRules = persisted.ThresholdRules;
+            _readings = persisted.Readings
+                .GroupBy(reading => reading.PointCode, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.OrderByDescending(item => item.CollectedAt).ToList(), StringComparer.OrdinalIgnoreCase);
+        }
+        else
+        {
+            _systems = BuildSystems();
+            _points = BuildPoints().ToDictionary(point => point.PointCode, StringComparer.OrdinalIgnoreCase);
+            _thresholdRules = BuildThresholdRules();
+            _readings = BuildReadings()
             .GroupBy(reading => reading.PointCode, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.OrderByDescending(item => item.CollectedAt).ToList(), StringComparer.OrdinalIgnoreCase);
+            PersistSeedData();
+        }
     }
 
     public IotIntegrationCatalog GetCatalog() =>
@@ -103,6 +120,7 @@ public sealed class IotIntegrationService : IIotIntegrationService
             _readings[command.PointCode] = readings;
         }
 
+        _persistence?.SaveReading(reading);
         readings.Insert(0, reading);
         return new TelemetryIngestionResult(true, null, command.PointCode, command.MetricCode, risk, ruleSummary, reading);
     }
@@ -288,4 +306,32 @@ public sealed class IotIntegrationService : IIotIntegrationService
             ["北建院", "中科医信", "PPT"],
             "客户调研涉及 CO2、温湿度、污水和给排水字段；竞品功能包含环境质量和污水站实时监测。")
     ];
+
+    private void PersistSeedData()
+    {
+        if (_persistence is null)
+        {
+            return;
+        }
+
+        foreach (var system in _systems)
+        {
+            _persistence.SaveSystem(system);
+        }
+
+        foreach (var point in _points.Values)
+        {
+            _persistence.SavePoint(point);
+        }
+
+        foreach (var rule in _thresholdRules)
+        {
+            _persistence.SaveThresholdRule(rule);
+        }
+
+        foreach (var reading in _readings.Values.SelectMany(readings => readings))
+        {
+            _persistence.SaveReading(reading);
+        }
+    }
 }

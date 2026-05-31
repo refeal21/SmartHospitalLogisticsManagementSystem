@@ -122,8 +122,8 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
     await page.getByRole('button', { name: '生成待派工单' }).click()
 
     await expect(page.getByRole('heading', { name: '工单调度', exact: true })).toBeVisible()
-    await expect(page.getByText('WO-SR-20260531-0001')).toBeVisible()
-    await expect(page.getByTestId('work-order-detail').getByText('门诊大厅空调异常服务请求')).toBeVisible()
+    await expect(page.getByTestId('work-order-list')).toContainText(/WO-SR-/)
+    await expect(page.getByTestId('work-order-detail')).toContainText('BIM-OPD-F1-HALL')
     await expect(page.getByTestId('work-order-detail').getByText('状态：新建', { exact: true })).toBeVisible()
   })
 
@@ -279,8 +279,9 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
   test('资产巡检异常工单进入调度池并保留来源证据', async ({ page }) => {
     await page.goto('/#设备台账')
 
-    await page.getByRole('button', { name: /MEDGAS-IPD-8F/ }).click()
-    const convertButton = page.getByRole('button', { name: '异常完成并转工单' }).first()
+    await page.getByTestId('asset-list').getByRole('button', { name: /MEDGAS-IPD-8F/ }).click()
+    await expect(page.getByTestId('asset-detail-panel')).toContainText('BIM-IPD-F8-WARD')
+    const convertButton = page.getByTestId('maintenance-task-panel').getByRole('button', { name: '异常完成并转工单' }).first()
     if (await convertButton.isEnabled()) {
       await convertButton.click()
     }
@@ -354,7 +355,7 @@ test.describe('医院后勤 BIM 智慧运维功能型后台', () => {
     await expect(page.getByTestId('work-order-detail')).toContainText('医废暂存间负压异常处置')
 
     await page.getByRole('button', { name: '楼层视图' }).click()
-    await page.getByTestId('spatial-floor-map').getByRole('button', { name: /住院 8F 医用气体分区阀箱/ }).click()
+    await page.getByTestId('spatial-floor-map').getByRole('button', { name: /MEDGAS-IPD-8F/ }).click()
     await expect(page.getByTestId('spatial-point-detail')).toContainText('MEDGAS-IPD-8F')
     await expect(page.getByTestId('spatial-point-detail')).toContainText('BIM-IPD-F8-WARD')
     await page.getByTestId('spatial-point-detail').getByRole('button', { name: '打开资产台账' }).click()

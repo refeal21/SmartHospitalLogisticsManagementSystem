@@ -684,7 +684,7 @@ button {
 .asset-maintenance-workbench {
   display: grid;
   grid-template-columns: minmax(260px, 0.8fr) minmax(300px, 1fr) minmax(320px, 1fr) minmax(260px, 0.8fr);
-  gap: 10px;
+  gap: 12px;
 }
 
 .asset-maintenance-workbench h2 {
@@ -703,12 +703,15 @@ button {
   text-align: left;
   background: #ffffff;
   color: #183752;
-  border-color: #d8e6f0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 11px 12px;
 }
 
 .asset-card.selected {
-  border-color: #1f74b7;
-  box-shadow: 0 0 0 2px rgba(31, 116, 183, 0.1);
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(11, 103, 163, 0.12);
+  background: #f8fcff;
 }
 
 .asset-card strong,
@@ -726,10 +729,10 @@ button {
 .asset-detail-panel,
 .maintenance-task-panel,
 .asset-lifecycle-panel {
-  border: 1px solid #e0eaf2;
-  border-radius: 5px;
-  padding: 10px;
-  background: #fbfdff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--surface-soft);
 }
 
 .maintenance-task-panel {
@@ -739,9 +742,9 @@ button {
 }
 
 .maintenance-task-card {
-  border: 1px solid #dfeaf2;
-  border-radius: 5px;
-  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 11px;
   display: grid;
   gap: 8px;
   background: #ffffff;
@@ -814,7 +817,7 @@ button {
 .iot-workbench {
   display: grid;
   grid-template-columns: minmax(220px, 0.7fr) minmax(260px, 0.9fr) minmax(320px, 1fr) minmax(300px, 1fr);
-  gap: 10px;
+  gap: 12px;
 }
 
 .iot-workbench h2 {
@@ -831,10 +834,10 @@ button {
 .iot-system-grid article,
 .iot-detail-panel,
 .iot-reading-panel article {
-  border: 1px solid #e0eaf2;
-  border-radius: 5px;
-  padding: 9px;
-  background: #fbfdff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 11px;
+  background: var(--surface-soft);
 }
 
 .iot-system-grid strong,
@@ -859,12 +862,15 @@ button {
   text-align: left;
   background: #ffffff;
   color: #183752;
-  border-color: #d8e6f0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 11px 12px;
 }
 
 .iot-point-card.selected {
-  border-color: #1f74b7;
-  box-shadow: 0 0 0 2px rgba(31, 116, 183, 0.1);
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(11, 103, 163, 0.12);
+  background: #f8fcff;
 }
 
 .iot-point-card strong,
@@ -900,7 +906,7 @@ button {
 .medical-gas-workbench {
   display: grid;
   grid-template-columns: minmax(260px, 0.8fr) minmax(320px, 1fr) minmax(320px, 1fr) minmax(300px, 0.9fr);
-  gap: 10px;
+  gap: 12px;
 }
 
 .medical-gas-workbench h2 {
@@ -908,13 +914,14 @@ button {
 }
 
 .medical-gas-summary,
+.medical-gas-detail,
 .medical-gas-zone-detail,
 .medical-gas-linked,
 .medical-gas-actions {
-  border: 1px solid #e0eaf2;
-  border-radius: 5px;
-  background: #fbfdff;
-  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 12px;
 }
 
 .medical-gas-kpis {
@@ -925,9 +932,10 @@ button {
 }
 
 .medical-gas-kpis article {
-  border-left: 3px solid #176fae;
+  border-left: 3px solid var(--brand);
+  border-radius: 6px;
   background: #ffffff;
-  padding: 8px;
+  padding: 10px;
 }
 
 .medical-gas-kpis span,
@@ -964,12 +972,15 @@ button {
   text-align: left;
   background: #ffffff;
   color: #183752;
-  border-color: #d8e6f0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 11px 12px;
 }
 
 .medical-gas-zone-card.selected {
-  border-color: #1f74b7;
-  box-shadow: 0 0 0 2px rgba(31, 116, 183, 0.1);
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(11, 103, 163, 0.12);
+  background: #f8fcff;
 }
 
 .medical-gas-linked,
@@ -982,10 +993,10 @@ button {
 
 .medical-gas-linked article,
 .medical-gas-flow-list article {
-  border: 1px solid #dfeaf2;
-  border-radius: 5px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
   background: #ffffff;
-  padding: 9px;
+  padding: 11px;
 }
 
 .medical-gas-flow-list article:first-child {
@@ -995,7 +1006,7 @@ button {
 .monitoring-alert-workbench {
   display: grid;
   grid-template-columns: minmax(280px, 0.9fr) minmax(340px, 1.05fr) minmax(260px, 0.8fr) minmax(260px, 0.8fr);
-  gap: 10px;
+  gap: 12px;
 }
 
 .monitoring-alert-workbench h2 {
@@ -1022,12 +1033,15 @@ button {
   text-align: left;
   background: #ffffff;
   color: #183752;
-  border-color: #d8e6f0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 11px 12px;
 }
 
 .monitoring-alarm-card.selected {
   border-color: #e55345;
-  box-shadow: 0 0 0 2px rgba(229, 83, 69, 0.11);
+  box-shadow: 0 0 0 3px rgba(229, 83, 69, 0.11);
+  background: #fffafa;
 }
 
 .monitoring-alarm-card strong,
@@ -1045,10 +1059,10 @@ button {
 .monitoring-alarm-detail,
 .monitoring-alarm-flow,
 .monitoring-alarm-evidence {
-  border: 1px solid #e0eaf2;
-  border-radius: 5px;
-  padding: 10px;
-  background: #fbfdff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--surface-soft);
 }
 
 .monitoring-alarm-flow ol {
@@ -1075,7 +1089,7 @@ button {
 
 .empty-state {
   border: 1px dashed #b9d2e8;
-  border-radius: 5px;
+  border-radius: 8px;
   padding: 12px;
   background: #ffffff;
   color: #536c82;
@@ -1103,8 +1117,8 @@ button {
   gap: 8px;
   align-items: center;
   padding: 9px;
-  border: 1px solid #e0eaf2;
-  border-radius: 5px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
   font-size: 13px;
 }
 
@@ -1157,8 +1171,8 @@ button {
 .floor-map {
   position: relative;
   min-height: 224px;
-  border: 1px solid #cadbe8;
-  border-radius: 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
   background:
     linear-gradient(90deg, rgba(31, 116, 183, 0.08) 1px, transparent 1px),
     linear-gradient(0deg, rgba(31, 116, 183, 0.08) 1px, transparent 1px),
@@ -1233,10 +1247,10 @@ button {
 }
 
 .spatial-detail-panel {
-  border: 1px solid #e0eaf2;
-  border-radius: 5px;
-  padding: 10px;
-  background: #fbfdff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--surface-soft);
   display: grid;
   align-content: start;
   gap: 10px;
@@ -1245,9 +1259,10 @@ button {
 .space-summary div,
 .alert-item,
 .team-card {
-  border: 1px solid #e0eaf2;
-  border-radius: 5px;
-  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 11px;
+  background: #ffffff;
 }
 
 .space-summary strong,

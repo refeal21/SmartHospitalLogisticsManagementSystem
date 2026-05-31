@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
 type OperationDomain = 'Foundation' | 'LogisticsService' | 'Environment' | 'IntegratedManagement'
@@ -2557,7 +2557,8 @@ function App() {
   )
   const [convertedAlarmDetail, setConvertedAlarmDetail] = useState<WorkOrderDetail | null>(null)
   const [selectedSpatialPointId, setSelectedSpatialPointId] = useState<string | null>(null)
-  const [source, setSource] = useState<'api' | 'local'>('local')
+  const [source, setSource] = useState<'api' | 'local'>('api')
+  const hasInteractiveChanges = useRef(false)
   const [activeMenuItem, setActiveMenuItem] = useState(() => initialMenuItem())
   const [activePage, setActivePage] = useState<WorkspacePage>(() => pageFromMenuItem(initialMenuItem()))
   const [activeServiceTab, setActiveServiceTab] = useState<ServiceWorkflowTab>(
@@ -2639,6 +2640,10 @@ function App() {
         const fetchedEnergyPerformanceBoard = (await energyPerformanceBoardResponse.json()) as EnergyPerformanceBoard
         const fetchedSafetyEmergencyBoard = (await safetyEmergencyBoardResponse.json()) as SafetyEmergencyBoard
         const fetchedPlatformGovernanceBoard = (await platformGovernanceBoardResponse.json()) as PlatformGovernanceBoard
+        if (hasInteractiveChanges.current) {
+          setSource('api')
+          return
+        }
         setDashboard((await dashboardResponse.json()) as OperationsDashboard)
         setBlueprint((await blueprintResponse.json()) as LogisticsBlueprint)
         setDispatchBoard(board)
@@ -2785,6 +2790,10 @@ function App() {
   const activeAlarm = selectedAlarm ?? alarmBoard.alarms[0] ?? null
   const selectedAlarmEvidence = alarmBoard.sourceEvidence.length > 0 ? alarmBoard.sourceEvidence : alarmSourceEvidence
   const latestEvaluation = [...selectedDetail.timeline].reverse().find((entry) => entry.rating)
+
+  function markInteractiveChange() {
+    hasInteractiveChanges.current = true
+  }
   const spatialPoints = useMemo<SpatialOperationPoint[]>(
     () => [
       ...dispatchBoard.workOrders.map((order) => ({
@@ -2881,6 +2890,7 @@ function App() {
   }
 
   async function createServiceIntakeWorkOrder() {
+    markInteractiveChange()
     const localOrder: WorkOrder = {
       workOrderNo: 'WO-SR-20260531-0001',
       title: '门诊大厅空调异常服务请求',
@@ -2994,6 +3004,7 @@ function App() {
   }
 
   async function loadDetail(workOrderNo: string, forceApi = false) {
+    markInteractiveChange()
     if (source === 'api' || forceApi) {
       const response = await fetch(`${apiBase}/api/operations/work-orders/${workOrderNo}`)
       if (response.ok) {
@@ -3009,6 +3020,7 @@ function App() {
   }
 
   async function loadAssetDetail(assetCode: string, forceApi = false) {
+    markInteractiveChange()
     if (source === 'api' || forceApi) {
       const response = await fetch(`${apiBase}/api/operations/assets/${assetCode}/maintenance`)
       if (response.ok) {
@@ -3021,6 +3033,7 @@ function App() {
   }
 
   async function completeMaintenanceTask(task: MaintenanceTask, convertToWorkOrder: boolean) {
+    markInteractiveChange()
     const checklistResults: InspectionChecklistResult[] =
       task.assetCode === 'MEDGAS-IPD-8F'
         ? [
@@ -3051,6 +3064,7 @@ function App() {
   }
 
   async function loadIotPointDetail(pointCode: string, forceApi = false) {
+    markInteractiveChange()
     if (source === 'api' || forceApi) {
       const response = await fetch(`${apiBase}/api/operations/iot-points/${pointCode}`)
       if (response.ok) {
@@ -3097,6 +3111,7 @@ function App() {
   }
 
   async function loadPowerDistributionCircuitDetail(circuitCode: string, forceApi = false) {
+    markInteractiveChange()
     if (source === 'api' || forceApi) {
       const response = await fetch(`${apiBase}/api/operations/power-distribution-circuits/${circuitCode}`)
       if (response.ok) {
@@ -3170,6 +3185,7 @@ function App() {
   }
 
   async function ingestPowerDistributionCriticalTelemetry() {
+    markInteractiveChange()
     const point =
       iotCatalog.points.find((item) => item.pointCode === powerDistributionCircuitDetail.circuit.meterPointCode) ??
       localIotCatalog.points.find((item) => item.pointCode === 'PWR-LV-B1-IN-01')!
@@ -3207,6 +3223,7 @@ function App() {
   }
 
   async function convertPowerDistributionAlarmToWorkOrder() {
+    markInteractiveChange()
     const alarm = powerDistributionCircuitDetail.activeAlarms[0] ?? powerDistributionBoard.activeAlarms[0]
     if (!alarm) {
       return
@@ -3275,6 +3292,7 @@ function App() {
   }
 
   async function loadHvacLoopDetail(loopCode: string, forceApi = false) {
+    markInteractiveChange()
     if (source === 'api' || forceApi) {
       const response = await fetch(`${apiBase}/api/operations/hvac-cooling-loops/${loopCode}`)
       if (response.ok) {
@@ -3348,6 +3366,7 @@ function App() {
   }
 
   async function ingestHvacCriticalTelemetry() {
+    markInteractiveChange()
     const point =
       iotCatalog.points.find((item) => item.pointCode === hvacLoopDetail.loop.monitoringPointCode) ??
       localIotCatalog.points.find((item) => item.pointCode === 'HVAC-CHW-B1-02')!
@@ -3385,6 +3404,7 @@ function App() {
   }
 
   async function convertHvacAlarmToWorkOrder() {
+    markInteractiveChange()
     const alarm = hvacLoopDetail.activeAlarms[0] ?? hvacBoard.activeAlarms[0]
     if (!alarm) {
       return
@@ -3453,6 +3473,7 @@ function App() {
   }
 
   async function loadWaterOperationsUnitDetail(unitCode: string, forceApi = false) {
+    markInteractiveChange()
     if (source === 'api' || forceApi) {
       const response = await fetch(`${apiBase}/api/operations/water-operations-units/${unitCode}`)
       if (response.ok) {
@@ -3526,6 +3547,7 @@ function App() {
   }
 
   async function ingestWaterOperationsCriticalTelemetry() {
+    markInteractiveChange()
     const point =
       iotCatalog.points.find((item) => item.pointCode === waterOperationsUnitDetail.unit.monitoringPointCode) ??
       localIotCatalog.points.find((item) => item.pointCode === 'WATER-PUMP-B1-01')!
@@ -3567,6 +3589,7 @@ function App() {
   }
 
   async function convertWaterOperationsAlarmToWorkOrder() {
+    markInteractiveChange()
     const alarm = waterOperationsUnitDetail.activeAlarms[0] ?? waterOperationsBoard.activeAlarms[0]
     if (!alarm) {
       return
@@ -3635,6 +3658,7 @@ function App() {
   }
 
   async function loadEnergyPerformanceAreaDetail(areaCode: string, forceApi = false) {
+    markInteractiveChange()
     if (source === 'api' || forceApi) {
       const response = await fetch(`${apiBase}/api/operations/energy-performance-areas/${areaCode}`)
       if (response.ok) {
@@ -3685,6 +3709,7 @@ function App() {
   }
 
   async function ingestEnergyPerformanceAnomaly() {
+    markInteractiveChange()
     const point =
       iotCatalog.points.find((item) => item.pointCode === 'PWR-LV-B1-IN-01') ??
       localIotCatalog.points.find((item) => item.pointCode === 'PWR-LV-B1-IN-01')!
@@ -3725,6 +3750,7 @@ function App() {
   }
 
   async function loadSafetyEmergencyNodeDetail(nodeCode: string, forceApi = false) {
+    markInteractiveChange()
     if (source === 'api' || forceApi) {
       const response = await fetch(`${apiBase}/api/operations/safety-emergency-nodes/${nodeCode}`)
       if (response.ok) {
@@ -3796,6 +3822,7 @@ function App() {
   }
 
   async function ingestSafetyEmergencyFire() {
+    markInteractiveChange()
     const point =
       iotCatalog.points.find((item) => item.pointCode === 'FIRE-SMOKE-OPD-1F-01') ??
       localIotCatalog.points.find((item) => item.pointCode === 'FIRE-SMOKE-OPD-1F-01')!
@@ -3831,6 +3858,7 @@ function App() {
   }
 
   async function convertSafetyEmergencyAlarm() {
+    markInteractiveChange()
     const alarm =
       safetyEmergencyNodeDetail.activeAlarms.find((item) => item.status !== 'ConvertedToWorkOrder') ??
       safetyEmergencyBoard.activeAlarms.find((item) => item.status !== 'ConvertedToWorkOrder')
@@ -3901,6 +3929,7 @@ function App() {
   }
 
   async function loadPlatformGovernanceDetail(controlCode: string, forceApi = false) {
+    markInteractiveChange()
     if (source === 'api' || forceApi) {
       const response = await fetch(`${apiBase}/api/operations/platform-governance-controls/${controlCode}`)
       if (response.ok) {
@@ -3913,6 +3942,7 @@ function App() {
   }
 
   async function recordPlatformGovernanceAction() {
+    markInteractiveChange()
     const controlCode = platformGovernanceDetail.control.controlCode
     if (source === 'api') {
       const response = await fetch(`${apiBase}/api/operations/platform-governance-controls/${controlCode}/actions`, {
@@ -4035,6 +4065,7 @@ function App() {
   }
 
   async function ingestMedicalGasCriticalTelemetry() {
+    markInteractiveChange()
     const point =
       iotCatalog.points.find((item) => item.pointCode === medicalGasZoneDetail.zone.pressurePointCode) ??
       localIotCatalog.points.find((item) => item.pointCode === 'MEDGAS-O2-8F')!
@@ -4072,6 +4103,7 @@ function App() {
   }
 
   async function convertMedicalGasAlarmToWorkOrder() {
+    markInteractiveChange()
     const alarm = medicalGasZoneDetail.activeAlarms[0] ?? medicalGasBoard.activeAlarms[0]
     if (!alarm) {
       return
@@ -4150,6 +4182,7 @@ function App() {
   }
 
   async function acknowledgeSelectedAlarm() {
+    markInteractiveChange()
     if (!activeAlarm || activeAlarm.status === 'Closed' || activeAlarm.status === 'ConvertedToWorkOrder') {
       return
     }
@@ -4176,6 +4209,7 @@ function App() {
   }
 
   async function convertSelectedAlarmToWorkOrder() {
+    markInteractiveChange()
     if (!activeAlarm || activeAlarm.status === 'Closed') {
       return
     }
@@ -4247,6 +4281,7 @@ function App() {
   }
 
   async function ingestCriticalTelemetry() {
+    markInteractiveChange()
     const metricCode = selectedIotPoint.point.metrics[0]?.code ?? 'pressure'
     const value = selectedIotPoint.point.pointCode.includes('ENV') ? 1300 : 0.31
     const unit = selectedIotPoint.point.metrics[0]?.unit ?? ''
@@ -4279,6 +4314,7 @@ function App() {
   }
 
   async function dispatchSelected() {
+    markInteractiveChange()
     const teamName = selectedRecommendation?.recommendedTeam ?? '综合维修班'
     if (source === 'api') {
       const response = await fetch(`${apiBase}/api/operations/work-orders/${selectedDetail.workOrder.workOrderNo}/dispatch`, {
@@ -4310,6 +4346,7 @@ function App() {
     nextStatus: WorkOrderStatus,
     rating?: number,
   ) {
+    markInteractiveChange()
     const operator =
       action === 'Evaluate'
         ? '服务对象'
@@ -4876,7 +4913,7 @@ function App() {
             <div className="asset-maintenance-workbench">
               <section>
                 <h2>设备设施台账</h2>
-                <div className="asset-list">
+                <div className="asset-list" data-testid="asset-list">
                   {assetBoard.assets.map((asset) => (
                     <button
                       className={`asset-card ${selectedAssetDetail.asset.assetCode === asset.assetCode ? 'selected' : ''}`}
@@ -4892,7 +4929,7 @@ function App() {
                 </div>
               </section>
 
-              <section className="asset-detail-panel">
+              <section className="asset-detail-panel" data-testid="asset-detail-panel">
                 <h2>资产详情</h2>
                 <div className="detail-title">
                   <strong>{selectedAssetDetail.asset.name}</strong>
@@ -4918,7 +4955,7 @@ function App() {
                 </dl>
               </section>
 
-              <section className="maintenance-task-panel">
+              <section className="maintenance-task-panel" data-testid="maintenance-task-panel">
                 <h2>巡检任务</h2>
                 {(selectedAssetDueTasks.length > 0 ? selectedAssetDueTasks : selectedAssetDetail.tasks).map((task) => (
                   <article className="maintenance-task-card" key={task.taskNo}>

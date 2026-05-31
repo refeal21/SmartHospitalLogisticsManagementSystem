@@ -19,6 +19,7 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
             services.RemoveAll<IAssetMaintenancePersistence>();
             services.RemoveAll<IIotIntegrationPersistence>();
             services.RemoveAll<IMonitoringAlarmPersistence>();
+            services.RemoveAll<IMedicalGasPersistence>();
             services.RemoveAll<WorkOrderDispatchService>();
             services.RemoveAll<IWorkOrderDispatchService>();
             services.RemoveAll<IWorkOrderIntakeService>();
@@ -27,6 +28,7 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
             services.RemoveAll<IMonitoringAlarmService>();
             services.RemoveAll<IMonitoringAlarmRecorder>();
             services.RemoveAll<IIotIntegrationService>();
+            services.RemoveAll<IMedicalGasService>();
 
             services.AddSingleton<IWorkOrderPersistence>(_ =>
                 new SqliteWorkOrderPersistence(Path.Combine(_dbDirectory, "work-orders.db")));
@@ -36,6 +38,8 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
                 new SqliteIotIntegrationPersistence(Path.Combine(_dbDirectory, "iot.db")));
             services.AddSingleton<IMonitoringAlarmPersistence>(_ =>
                 new SqliteMonitoringAlarmPersistence(Path.Combine(_dbDirectory, "alarms.db")));
+            services.AddSingleton<IMedicalGasPersistence>(_ =>
+                new SqliteMedicalGasPersistence(Path.Combine(_dbDirectory, "medical-gas.db")));
 
             services.AddSingleton<WorkOrderDispatchService>();
             services.AddSingleton<IWorkOrderDispatchService>(provider => provider.GetRequiredService<WorkOrderDispatchService>());
@@ -45,6 +49,7 @@ public sealed class IsolatedOperationsApiFactory : WebApplicationFactory<Program
             services.AddSingleton<IMonitoringAlarmService>(provider => provider.GetRequiredService<MonitoringAlarmService>());
             services.AddSingleton<IMonitoringAlarmRecorder>(provider => provider.GetRequiredService<MonitoringAlarmService>());
             services.AddSingleton<IIotIntegrationService, IotIntegrationService>();
+            services.AddSingleton<IMedicalGasService, MedicalGasService>();
         });
     }
 

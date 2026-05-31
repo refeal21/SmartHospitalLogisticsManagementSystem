@@ -418,6 +418,53 @@ type IotIntegrationCatalog = {
   sourceEvidence: FeatureEvidence[]
 }
 
+type MedicalGasSupplyType = 'Oxygen' | 'CompressedAir' | 'Vacuum'
+type MedicalGasZoneStatus = 'Normal' | 'Warning' | 'Critical' | 'Maintenance'
+
+type MedicalGasZone = {
+  zoneCode: string
+  name: string
+  department: string
+  location: SpatialLocation
+  supplyTypes: MedicalGasSupplyType[]
+  responsibleTeam: string
+  pressurePointCode: string
+  valveAssetCode: string
+  status: MedicalGasZoneStatus
+  riskSummary: string
+  sourceEvidence: FeatureEvidence[]
+}
+
+type MedicalGasBoardKpi = {
+  zoneCount: number
+  abnormalZones: number
+  activeAlarms: number
+  openWorkOrders: number
+  dueMaintenanceTasks: number
+}
+
+type MedicalGasBoard = {
+  generatedAt: string
+  zones: MedicalGasZone[]
+  monitoringPoints: IotMonitoringPoint[]
+  valveAssets: AssetLedgerItem[]
+  activeAlarms: MonitoringAlarmEvent[]
+  openWorkOrders: WorkOrder[]
+  dueMaintenanceTasks: MaintenanceTask[]
+  sourceEvidence: FeatureEvidence[]
+  kpis: MedicalGasBoardKpi
+}
+
+type MedicalGasZoneDetail = {
+  zone: MedicalGasZone
+  monitoringPoint?: IotPointDetail | null
+  valveAsset?: AssetMaintenanceDetail | null
+  activeAlarms: MonitoringAlarmEvent[]
+  openWorkOrders: WorkOrder[]
+  maintenanceTasks: MaintenanceTask[]
+  sourceEvidence: FeatureEvidence[]
+}
+
 type SpatialPointKind = 'workOrder' | 'asset' | 'alarm' | 'iot'
 type SpatialPointTone = 'workorder' | 'asset' | 'alert' | 'normal'
 
@@ -444,7 +491,7 @@ type TelemetryIngestionResult = {
   notFound: boolean
 }
 
-type WorkspacePage = 'overview' | 'dispatch' | 'assets' | 'iot' | 'alerts' | 'spatial' | 'evidence'
+type WorkspacePage = 'overview' | 'dispatch' | 'assets' | 'iot' | 'alerts' | 'medicalGas' | 'spatial' | 'evidence'
 
 const locations = {
   lobby: {
@@ -560,7 +607,7 @@ const localBlueprint: LogisticsBlueprint = {
   navigationGroups: [
     { code: 'WORKBENCH', name: '运营工作台', items: ['后勤首页', '待办中心', '风险告警'] },
     { code: 'SERVICE', name: '一站式服务', items: ['服务受理', '工单调度', '任务执行', '验收回访', '服务评价'] },
-    { code: 'FACILITY', name: '设备设施', items: ['设备台账', '巡检保养', '维修记录', '备件库存', '电梯专项'] },
+    { code: 'FACILITY', name: '设备设施', items: ['设备台账', '巡检保养', '维修记录', '备件库存', '电梯专项', '暖通/给排水/医气专项'] },
     { code: 'SPATIAL', name: 'BIM 空间', items: ['空间台账', '楼层视图', '设备点位', '告警点位', '工单点位'] },
     { code: 'ENVIRONMENT', name: '环境监管', items: ['环境点位', '预警池', '报警策略', '医废处置', '智慧卫生间'] },
     { code: 'MANAGEMENT', name: '综合管理', items: ['质量标准', '合同管理', '考核管理', '人员班组', '运营分析', '能耗成本'] },
@@ -970,6 +1017,51 @@ const localMonitoringAlarmBoard: MonitoringAlarmBoard = {
   sourceEvidence: alarmSourceEvidence,
 }
 
+const medicalGasSourceEvidence: FeatureEvidence[] = [
+  {
+    featureName: '医用气体专项运行',
+    sources: ['北建院', '中科医信', 'PPT'],
+    evidenceSummary: '客户调研数据约束医用气体点位、传感器、位置、采集字段和角色；竞品功能树约束医气专项、巡检和告警处置；PPT 约束 BIM 智慧运维集成边界。',
+  },
+  {
+    featureName: '医气告警巡检工单闭环',
+    sources: ['北建院', '中科医信', 'PPT'],
+    evidenceSummary: '氧气压力、分区阀箱、巡检保养、物联告警和一站式工单调度必须按 BIM 空间位置贯通。',
+  },
+]
+
+const localMedicalGasBoard: MedicalGasBoard = {
+  generatedAt: '2026-05-30T09:30:00+08:00',
+  zones: [
+    {
+      zoneCode: 'MG-ZONE-IPD-8F',
+      name: '住院 8F 医用气体分区',
+      department: '眼科病区',
+      location: locations.ward,
+      supplyTypes: ['Oxygen', 'CompressedAir', 'Vacuum'],
+      responsibleTeam: '医气维保人员',
+      pressurePointCode: 'MEDGAS-O2-8F',
+      valveAssetCode: 'MEDGAS-IPD-8F',
+      status: 'Maintenance',
+      riskSummary: '氧气压力监测、分区阀箱巡检、异常告警和工单调度必须形成闭环。',
+      sourceEvidence: medicalGasSourceEvidence,
+    },
+  ],
+  monitoringPoints: localIotCatalog.points.filter((point) => point.category === 'MedicalGas'),
+  valveAssets: localAssetMaintenanceBoard.assets.filter((asset) => asset.assetCode === 'MEDGAS-IPD-8F'),
+  activeAlarms: localMonitoringAlarmBoard.alarms.filter((alarm) => alarm.pointCode === 'MEDGAS-O2-8F'),
+  openWorkOrders: [],
+  dueMaintenanceTasks: localAssetMaintenanceBoard.dueTasks.filter((task) => task.assetCode === 'MEDGAS-IPD-8F'),
+  sourceEvidence: medicalGasSourceEvidence,
+  kpis: {
+    zoneCount: 1,
+    abnormalZones: 1,
+    activeAlarms: 1,
+    openWorkOrders: 0,
+    dueMaintenanceTasks: 1,
+  },
+}
+
 const statusLabels: Record<WorkOrderStatus | FacilityStatus | SignalStatus, string> = {
   New: '新建',
   Dispatched: '已派工',
@@ -1033,6 +1125,19 @@ const alarmStatusLabels: Record<MonitoringAlarmStatus, string> = {
   Closed: '已关闭',
 }
 
+const medicalGasSupplyLabels: Record<MedicalGasSupplyType, string> = {
+  Oxygen: '氧气',
+  CompressedAir: '压缩空气',
+  Vacuum: '负压真空',
+}
+
+const medicalGasStatusLabels: Record<MedicalGasZoneStatus, string> = {
+  Normal: '正常',
+  Warning: '预警',
+  Critical: '严重',
+  Maintenance: '保养中',
+}
+
 const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = {
   overview: {
     title: '后勤运营总览',
@@ -1054,6 +1159,10 @@ const pageProfiles: Record<WorkspacePage, { title: string; summary: string }> = 
     title: '环境预警处置工作台',
     summary: '聚焦物联告警：预警池、告警详情、确认处置、转工单和调度池联动。',
   },
+  medicalGas: {
+    title: '医用气体专项工作台',
+    summary: '聚合医气分区、氧气压力点位、分区阀箱、巡检任务、物联告警和工单调度，先把一个高风险专项做成真实业务闭环。',
+  },
   spatial: {
     title: 'BIM 空间运维工作台',
     summary: '聚焦空间定位：设备、告警、工单和班组负载在同一空间语境里联动。',
@@ -1071,6 +1180,10 @@ const spatialMenuItems = ['空间台账', '楼层视图', '设备点位', '告�
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5248'
 
 function pageFromMenuItem(item: string): WorkspacePage {
+  if (item.toLowerCase().includes('medical-gas') || item.includes('医气') || item.includes('医用气体') || item.includes('鍖绘皵')) {
+    return 'medicalGas'
+  }
+
   if (item.includes('首页') || item.includes('待办')) {
     return 'overview'
   }
@@ -1157,6 +1270,9 @@ function App() {
   const [selectedAssetDetail, setSelectedAssetDetail] = useState(() => buildLocalAssetDetail('MEDGAS-IPD-8F'))
   const [lastMaintenanceResult, setLastMaintenanceResult] = useState<MaintenanceTaskOperationResult | null>(null)
   const [convertedMaintenanceDetail, setConvertedMaintenanceDetail] = useState<WorkOrderDetail | null>(null)
+  const [medicalGasBoard, setMedicalGasBoard] = useState(localMedicalGasBoard)
+  const [medicalGasZoneDetail, setMedicalGasZoneDetail] = useState(() => buildLocalMedicalGasDetail('MG-ZONE-IPD-8F'))
+  const [convertedMedicalGasDetail, setConvertedMedicalGasDetail] = useState<WorkOrderDetail | null>(null)
   const [iotCatalog, setIotCatalog] = useState(localIotCatalog)
   const [selectedIotPoint, setSelectedIotPoint] = useState(() => buildLocalIotPointDetail('MEDGAS-O2-8F'))
   const [lastTelemetryResult, setLastTelemetryResult] = useState<TelemetryIngestionResult | null>(null)
@@ -1196,6 +1312,7 @@ function App() {
       fetch(`${apiBase}/api/operations/asset-maintenance-board`, { signal: controller.signal }),
       fetch(`${apiBase}/api/operations/iot-catalog`, { signal: controller.signal }),
       fetch(`${apiBase}/api/operations/monitoring-alarms`, { signal: controller.signal }),
+      fetch(`${apiBase}/api/operations/medical-gas-board`, { signal: controller.signal }),
     ])
       .then(async ([
         dashboardResponse,
@@ -1204,6 +1321,7 @@ function App() {
         assetBoardResponse,
         iotCatalogResponse,
         alarmBoardResponse,
+        medicalGasBoardResponse,
       ]) => {
         if (
           !dashboardResponse.ok ||
@@ -1211,7 +1329,8 @@ function App() {
           !boardResponse.ok ||
           !assetBoardResponse.ok ||
           !iotCatalogResponse.ok ||
-          !alarmBoardResponse.ok
+          !alarmBoardResponse.ok ||
+          !medicalGasBoardResponse.ok
         ) {
           throw new Error('Logistics API unavailable')
         }
@@ -1220,12 +1339,14 @@ function App() {
         const maintenanceBoard = (await assetBoardResponse.json()) as AssetMaintenanceBoard
         const fetchedIotCatalog = (await iotCatalogResponse.json()) as IotIntegrationCatalog
         const fetchedAlarmBoard = (await alarmBoardResponse.json()) as MonitoringAlarmBoard
+        const fetchedMedicalGasBoard = (await medicalGasBoardResponse.json()) as MedicalGasBoard
         setDashboard((await dashboardResponse.json()) as OperationsDashboard)
         setBlueprint((await blueprintResponse.json()) as LogisticsBlueprint)
         setDispatchBoard(board)
         setAssetBoard(maintenanceBoard)
         setIotCatalog(fetchedIotCatalog)
         setAlarmBoard(fetchedAlarmBoard)
+        setMedicalGasBoard(fetchedMedicalGasBoard)
         setSelectedAlarm(fetchedAlarmBoard.alarms[0] ?? null)
         setSource('api')
 
@@ -1259,6 +1380,16 @@ function App() {
           })
           if (pointResponse.ok) {
             setSelectedIotPoint((await pointResponse.json()) as IotPointDetail)
+          }
+        }
+
+        const firstMedicalGasZoneCode = fetchedMedicalGasBoard.zones[0]?.zoneCode
+        if (firstMedicalGasZoneCode) {
+          const zoneResponse = await fetch(`${apiBase}/api/operations/medical-gas-zones/${firstMedicalGasZoneCode}`, {
+            signal: controller.signal,
+          })
+          if (zoneResponse.ok) {
+            setMedicalGasZoneDetail((await zoneResponse.json()) as MedicalGasZoneDetail)
           }
         }
       })
@@ -1584,6 +1715,172 @@ function App() {
     setSelectedAlarm(nextAlarm ?? board.alarms[0] ?? null)
   }
 
+  async function refreshMedicalGasBoard(zoneCode = medicalGasZoneDetail.zone.zoneCode) {
+    if (source !== 'api') {
+      return
+    }
+
+    const boardResponse = await fetch(`${apiBase}/api/operations/medical-gas-board`)
+    if (boardResponse.ok) {
+      setMedicalGasBoard((await boardResponse.json()) as MedicalGasBoard)
+    }
+
+    const detailResponse = await fetch(`${apiBase}/api/operations/medical-gas-zones/${zoneCode}`)
+    if (detailResponse.ok) {
+      setMedicalGasZoneDetail((await detailResponse.json()) as MedicalGasZoneDetail)
+    }
+  }
+
+  function applyMedicalGasAlarm(alarm: MonitoringAlarmEvent) {
+    setMedicalGasBoard((current) => {
+      const alarms = [alarm, ...current.activeAlarms.filter((item) => item.alarmNo !== alarm.alarmNo)]
+      return {
+        ...current,
+        activeAlarms: alarms,
+        zones: current.zones.map((zone) =>
+          zone.pressurePointCode === alarm.pointCode ? { ...zone, status: 'Critical' } : zone,
+        ),
+        kpis: {
+          ...current.kpis,
+          activeAlarms: alarms.length,
+          abnormalZones: current.kpis.abnormalZones || 1,
+        },
+      }
+    })
+    setMedicalGasZoneDetail((current) => ({
+      ...current,
+      zone: { ...current.zone, status: 'Critical' },
+      activeAlarms: [alarm, ...current.activeAlarms.filter((item) => item.alarmNo !== alarm.alarmNo)],
+    }))
+  }
+
+  function applyMedicalGasWorkOrderDetail(detail: WorkOrderDetail) {
+    setConvertedMedicalGasDetail(detail)
+    setMedicalGasBoard((current) => {
+      const orders = [detail.workOrder, ...current.openWorkOrders.filter((item) => item.workOrderNo !== detail.workOrder.workOrderNo)]
+      return {
+        ...current,
+        openWorkOrders: orders,
+        kpis: {
+          ...current.kpis,
+          openWorkOrders: orders.length,
+        },
+      }
+    })
+    setMedicalGasZoneDetail((current) => ({
+      ...current,
+      openWorkOrders: [
+        detail.workOrder,
+        ...current.openWorkOrders.filter((item) => item.workOrderNo !== detail.workOrder.workOrderNo),
+      ],
+    }))
+  }
+
+  async function ingestMedicalGasCriticalTelemetry() {
+    const point =
+      iotCatalog.points.find((item) => item.pointCode === medicalGasZoneDetail.zone.pressurePointCode) ??
+      localIotCatalog.points.find((item) => item.pointCode === 'MEDGAS-O2-8F')!
+    const metricCode = point.metrics.find((metric) => metric.code === 'pressure')?.code ?? point.metrics[0]?.code ?? 'pressure'
+    const unit = point.metrics.find((metric) => metric.code === metricCode)?.unit ?? 'MPa'
+
+    if (source === 'api') {
+      const response = await fetch(`${apiBase}/api/operations/iot-readings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pointCode: point.pointCode,
+          metricCode,
+          value: 0.31,
+          unit,
+          collectedAt: new Date().toISOString(),
+        }),
+      })
+      if (response.ok) {
+        const result = (await response.json()) as TelemetryIngestionResult
+        applyTelemetryResult(result)
+        await refreshMonitoringAlarms({ pointCode: result.pointCode, metricCode: result.metricCode })
+        await refreshMedicalGasBoard()
+        return
+      }
+    }
+
+    const result = buildLocalTelemetryResult(point, metricCode, 0.31, unit)
+    applyTelemetryResult(result)
+    if (result.reading) {
+      const alarm = buildLocalAlarmFromTelemetry(point, result.reading)
+      applyAlarmUpdate(alarm)
+      applyMedicalGasAlarm(alarm)
+    }
+  }
+
+  async function convertMedicalGasAlarmToWorkOrder() {
+    const alarm = medicalGasZoneDetail.activeAlarms[0] ?? medicalGasBoard.activeAlarms[0]
+    if (!alarm) {
+      return
+    }
+
+    if (source === 'api' && alarm.status !== 'ConvertedToWorkOrder') {
+      const response = await fetch(`${apiBase}/api/operations/monitoring-alarms/${alarm.alarmNo}/convert-to-work-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operator: '医气专项调度员',
+          targetTeam: medicalGasZoneDetail.zone.responsibleTeam,
+          remark: '医用气体压力告警转入一站式工单调度',
+        }),
+      })
+      if (response.ok) {
+        const convertedAlarm = (await response.json()) as MonitoringAlarmEvent
+        applyAlarmUpdate(convertedAlarm)
+        const detail = convertedAlarm.workOrderNo
+          ? await loadWorkOrderDetailForAlarm(convertedAlarm.workOrderNo, convertedAlarm)
+          : null
+        if (detail) {
+          applyGeneratedWorkOrderDetail(detail, { openDispatch: false })
+          applyMedicalGasWorkOrderDetail(detail)
+        }
+        await refreshMedicalGasBoard()
+        return
+      }
+    }
+
+    const convertedAlarm: MonitoringAlarmEvent = {
+      ...alarm,
+      status: 'ConvertedToWorkOrder',
+      workOrderNo: alarm.workOrderNo ?? buildAlarmWorkOrderNo(alarm),
+      acknowledgedBy: alarm.acknowledgedBy ?? medicalGasZoneDetail.zone.responsibleTeam,
+      acknowledgedAt: alarm.acknowledgedAt ?? new Date().toISOString(),
+      lastRemark: '医用气体压力告警转入一站式工单调度',
+    }
+    const detail = buildLocalAlarmWorkOrderDetail(convertedAlarm)
+    applyAlarmUpdate(convertedAlarm)
+    applyGeneratedWorkOrderDetail(detail, { openDispatch: false })
+    applyMedicalGasAlarm(convertedAlarm)
+    applyMedicalGasWorkOrderDetail(detail)
+  }
+
+  async function openConvertedMedicalGasWorkOrder() {
+    const workOrderNo =
+      convertedMedicalGasDetail?.workOrder.workOrderNo ??
+      medicalGasZoneDetail.openWorkOrders[0]?.workOrderNo ??
+      medicalGasBoard.openWorkOrders[0]?.workOrderNo
+    if (!workOrderNo) {
+      return
+    }
+
+    const detail =
+      convertedMedicalGasDetail?.workOrder.workOrderNo === workOrderNo
+        ? convertedMedicalGasDetail
+        : source === 'api'
+          ? await loadWorkOrderDetailForAlarm(workOrderNo, medicalGasZoneDetail.activeAlarms[0])
+          : null
+
+    if (detail) {
+      setSelectedDetail(detail)
+    }
+    openServiceWorkflowTab(serviceWorkflowTabs[1])
+  }
+
   function selectMonitoringAlarm(alarmNo: string) {
     const alarm = alarmBoard.alarms.find((item) => item.alarmNo === alarmNo)
     if (alarm) {
@@ -1688,7 +1985,7 @@ function App() {
     if (detail) {
       setSelectedDetail(detail)
     }
-    openServiceWorkflowTab('工单调度')
+    openServiceWorkflowTab(serviceWorkflowTabs[1])
   }
 
   async function ingestCriticalTelemetry() {
@@ -2455,6 +2752,131 @@ function App() {
             </div>
           </section>
 
+          <section className="panel medical-gas-panel">
+            <PanelHeader title="医用气体专项" meta="分区 / 点位 / 阀箱 / 巡检 / 告警 / 工单" />
+            <div className="medical-gas-workbench" data-testid="medical-gas-board">
+              <section className="medical-gas-summary">
+                <h2>专项总览</h2>
+                <div className="medical-gas-kpis">
+                  <article>
+                    <span>分区</span>
+                    <strong>{medicalGasBoard.kpis.zoneCount}</strong>
+                  </article>
+                  <article>
+                    <span>异常分区</span>
+                    <strong>{medicalGasBoard.kpis.abnormalZones}</strong>
+                  </article>
+                  <article>
+                    <span>活动告警</span>
+                    <strong>{medicalGasBoard.kpis.activeAlarms}</strong>
+                  </article>
+                  <article>
+                    <span>待办巡检</span>
+                    <strong>{medicalGasBoard.kpis.dueMaintenanceTasks}</strong>
+                  </article>
+                </div>
+                {medicalGasBoard.zones.map((zone) => (
+                  <button
+                    className={`medical-gas-zone-card ${medicalGasZoneDetail.zone.zoneCode === zone.zoneCode ? 'selected' : ''}`}
+                    key={zone.zoneCode}
+                    type="button"
+                    onClick={() => setMedicalGasZoneDetail(buildLocalMedicalGasDetail(zone.zoneCode))}
+                  >
+                    <strong>{zone.name}</strong>
+                    <span>{zone.zoneCode} / {medicalGasStatusLabels[zone.status]}</span>
+                    <small>{zone.location.building} / {zone.location.room} / {zone.location.bimElementId}</small>
+                  </button>
+                ))}
+              </section>
+
+              <section className="medical-gas-zone-detail">
+                <h2>分区详情</h2>
+                <div className="detail-title">
+                  <strong>{medicalGasZoneDetail.zone.name}</strong>
+                  <span>{medicalGasStatusLabels[medicalGasZoneDetail.zone.status]}</span>
+                </div>
+                <dl className="detail-list">
+                  <div>
+                    <dt>BIM</dt>
+                    <dd>{medicalGasZoneDetail.zone.location.bimElementId}</dd>
+                  </div>
+                  <div>
+                    <dt>介质</dt>
+                    <dd>{medicalGasZoneDetail.zone.supplyTypes.map((item) => medicalGasSupplyLabels[item]).join('、')}</dd>
+                  </div>
+                  <div>
+                    <dt>责任</dt>
+                    <dd>{medicalGasZoneDetail.zone.responsibleTeam}</dd>
+                  </div>
+                  <div>
+                    <dt>来源</dt>
+                    <dd>{medicalGasZoneDetail.sourceEvidence.flatMap((item) => item.sources).join('、')}</dd>
+                  </div>
+                </dl>
+                <p>{medicalGasZoneDetail.zone.riskSummary}</p>
+              </section>
+
+              <section className="medical-gas-linked">
+                <h2>点位与阀箱</h2>
+                <article>
+                  <strong>{medicalGasZoneDetail.monitoringPoint?.point.pointCode ?? medicalGasZoneDetail.zone.pressurePointCode}</strong>
+                  <span>{medicalGasZoneDetail.monitoringPoint?.point.name ?? '医气压力点位'}</span>
+                  <small>{medicalGasZoneDetail.monitoringPoint?.point.metrics.map((metric) => `${metric.name}/${metric.sourceField}`).join('、')}</small>
+                </article>
+                <article>
+                  <strong>{medicalGasZoneDetail.valveAsset?.asset.assetCode ?? medicalGasZoneDetail.zone.valveAssetCode}</strong>
+                  <span>{medicalGasZoneDetail.valveAsset?.asset.name ?? '医用气体分区阀箱'}</span>
+                  <small>{medicalGasZoneDetail.valveAsset?.asset.maintenanceStrategy}</small>
+                </article>
+                {medicalGasZoneDetail.maintenanceTasks.map((task) => (
+                  <article key={task.taskNo}>
+                    <strong>{task.taskNo}</strong>
+                    <span>{task.title}</span>
+                    <small>{maintenanceStatusLabels[task.status]} / {priorityLabels[task.priority]}</small>
+                  </article>
+                ))}
+              </section>
+
+              <section className="medical-gas-actions">
+                <h2>告警与工单</h2>
+                <div className="action-bar">
+                  <button data-testid="medical-gas-ingest-critical" type="button" onClick={() => void ingestMedicalGasCriticalTelemetry()}>
+                    模拟医气压力异常
+                  </button>
+                  <button data-testid="medical-gas-convert-workorder" type="button" onClick={() => void convertMedicalGasAlarmToWorkOrder()}>
+                    告警转工单
+                  </button>
+                  <button data-testid="medical-gas-open-dispatch" type="button" onClick={() => void openConvertedMedicalGasWorkOrder()}>
+                    进入调度池
+                  </button>
+                </div>
+                <div className="medical-gas-flow-list">
+                  {medicalGasZoneDetail.activeAlarms.map((alarm) => (
+                    <article key={alarm.alarmNo}>
+                      <strong>{alarm.alarmNo}</strong>
+                      <span>{alarm.pointCode} / {telemetryRiskLabels[alarm.riskLevel]} / {alarmStatusLabels[alarm.status]}</span>
+                      <small>{alarm.workOrderNo ?? '尚未转工单'}</small>
+                    </article>
+                  ))}
+                  {medicalGasZoneDetail.openWorkOrders.map((order) => (
+                    <article key={order.workOrderNo}>
+                      <strong>{order.workOrderNo}</strong>
+                      <span>{order.title}</span>
+                      <small>{order.location.bimElementId}</small>
+                    </article>
+                  ))}
+                  {convertedMedicalGasDetail ? (
+                    <article>
+                      <strong>{convertedMedicalGasDetail.workOrder.workOrderNo}</strong>
+                      <span>{convertedMedicalGasDetail.sourceEvidence.map((item) => item.featureName).join('、')}</span>
+                      <small>{convertedMedicalGasDetail.location.bimElementId}</small>
+                    </article>
+                  ) : null}
+                </div>
+              </section>
+            </div>
+          </section>
+
           <section className="panel spatial-panel">
             <PanelHeader title="BIM 空间业务定位" meta="设备 / 告警 / 工单同图层" />
             {activePage === 'spatial' ? (
@@ -2852,6 +3274,19 @@ function buildLocalAssetDetail(assetCode: string): AssetMaintenanceDetail {
     tasks,
     lifecycle,
     sourceEvidence: assetSourceEvidence,
+  }
+}
+
+function buildLocalMedicalGasDetail(zoneCode: string): MedicalGasZoneDetail {
+  const zone = localMedicalGasBoard.zones.find((item) => item.zoneCode === zoneCode) ?? localMedicalGasBoard.zones[0]
+  return {
+    zone,
+    monitoringPoint: buildLocalIotPointDetail(zone.pressurePointCode),
+    valveAsset: buildLocalAssetDetail(zone.valveAssetCode),
+    activeAlarms: localMedicalGasBoard.activeAlarms.filter((alarm) => alarm.pointCode === zone.pressurePointCode),
+    openWorkOrders: localMedicalGasBoard.openWorkOrders.filter((order) => order.location.bimElementId === zone.location.bimElementId),
+    maintenanceTasks: localMedicalGasBoard.dueMaintenanceTasks.filter((task) => task.assetCode === zone.valveAssetCode),
+    sourceEvidence: medicalGasSourceEvidence,
   }
 }
 

@@ -542,6 +542,61 @@ public sealed record IotIntegrationCatalog(
     IReadOnlyList<TelemetryThresholdRule> ThresholdRules,
     IReadOnlyList<FeatureEvidence> SourceEvidence);
 
+public enum MedicalGasSupplyType
+{
+    Oxygen,
+    CompressedAir,
+    Vacuum
+}
+
+public enum MedicalGasZoneStatus
+{
+    Normal,
+    Warning,
+    Critical,
+    Maintenance
+}
+
+public sealed record MedicalGasZone(
+    string ZoneCode,
+    string Name,
+    string Department,
+    SpatialLocation Location,
+    IReadOnlyList<MedicalGasSupplyType> SupplyTypes,
+    string ResponsibleTeam,
+    string PressurePointCode,
+    string ValveAssetCode,
+    MedicalGasZoneStatus Status,
+    string RiskSummary,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
+
+public sealed record MedicalGasBoardKpi(
+    int ZoneCount,
+    int AbnormalZones,
+    int ActiveAlarms,
+    int OpenWorkOrders,
+    int DueMaintenanceTasks);
+
+public sealed record MedicalGasBoard(
+    DateTimeOffset GeneratedAt,
+    IReadOnlyList<MedicalGasZone> Zones,
+    IReadOnlyList<IotMonitoringPoint> MonitoringPoints,
+    IReadOnlyList<AssetLedgerItem> ValveAssets,
+    IReadOnlyList<MonitoringAlarmEvent> ActiveAlarms,
+    IReadOnlyList<WorkOrder> OpenWorkOrders,
+    IReadOnlyList<MaintenanceTask> DueMaintenanceTasks,
+    IReadOnlyList<FeatureEvidence> SourceEvidence,
+    MedicalGasBoardKpi Kpis);
+
+public sealed record MedicalGasZoneDetail(
+    MedicalGasZone Zone,
+    IotPointDetail? MonitoringPoint,
+    AssetMaintenanceDetail? ValveAsset,
+    IReadOnlyList<MonitoringAlarmEvent> ActiveAlarms,
+    IReadOnlyList<WorkOrder> OpenWorkOrders,
+    IReadOnlyList<MaintenanceTask> MaintenanceTasks,
+    IReadOnlyList<FeatureEvidence> SourceEvidence);
+
 public sealed record FeatureEvidence(
     string FeatureName,
     IReadOnlyList<string> Sources,

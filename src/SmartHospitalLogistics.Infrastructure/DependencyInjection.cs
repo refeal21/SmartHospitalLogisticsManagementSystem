@@ -48,6 +48,16 @@ public static class DependencyInjection
 
             return new SqliteMonitoringAlarmPersistence(dbPath);
         });
+        services.AddSingleton<IMedicalGasPersistence>(_ =>
+        {
+            var dbPath = Environment.GetEnvironmentVariable("SMART_HOSPITAL_LOGISTICS_MEDGAS_DB");
+            if (string.IsNullOrWhiteSpace(dbPath))
+            {
+                dbPath = Path.Combine(AppContext.BaseDirectory, "data", "smart-hospital-medgas.db");
+            }
+
+            return new SqliteMedicalGasPersistence(dbPath);
+        });
         services.AddSingleton<WorkOrderDispatchService>();
         services.AddSingleton<IWorkOrderDispatchService>(provider => provider.GetRequiredService<WorkOrderDispatchService>());
         services.AddSingleton<IWorkOrderIntakeService>(provider => provider.GetRequiredService<WorkOrderDispatchService>());
@@ -56,6 +66,7 @@ public static class DependencyInjection
         services.AddSingleton<IMonitoringAlarmService>(provider => provider.GetRequiredService<MonitoringAlarmService>());
         services.AddSingleton<IMonitoringAlarmRecorder>(provider => provider.GetRequiredService<MonitoringAlarmService>());
         services.AddSingleton<IIotIntegrationService, IotIntegrationService>();
+        services.AddSingleton<IMedicalGasService, MedicalGasService>();
         return services;
     }
 }

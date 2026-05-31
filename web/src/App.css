@@ -245,6 +245,7 @@ h2 {
 .content-grid[data-active-page='assets'] > .panel,
 .content-grid[data-active-page='iot'] > .panel,
 .content-grid[data-active-page='alerts'] > .panel,
+.content-grid[data-active-page='medicalGas'] > .panel,
 .content-grid[data-active-page='spatial'] > .panel,
 .content-grid[data-active-page='evidence'] > .panel {
   display: none;
@@ -255,6 +256,7 @@ h2 {
 .content-grid[data-active-page='iot'] > .iot-panel,
 .content-grid[data-active-page='alerts'] > .alert-panel,
 .content-grid[data-active-page='alerts'] > .team-panel,
+.content-grid[data-active-page='medicalGas'] > .medical-gas-panel,
 .content-grid[data-active-page='spatial'] > .spatial-panel,
 .content-grid[data-active-page='spatial'] > .alert-panel,
 .content-grid[data-active-page='spatial'] > .team-panel,
@@ -275,6 +277,7 @@ h2 {
 .dispatch-panel,
 .asset-maintenance-panel,
 .iot-panel,
+.medical-gas-panel,
 .spatial-panel,
 .alert-panel,
 .module-panel,
@@ -757,6 +760,101 @@ button {
 
 .reading-card.Normal {
   border-left: 3px solid #22a36c;
+}
+
+.medical-gas-workbench {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(320px, 1fr) minmax(320px, 1fr) minmax(300px, 0.9fr);
+  gap: 10px;
+}
+
+.medical-gas-workbench h2 {
+  margin-bottom: 8px;
+}
+
+.medical-gas-summary,
+.medical-gas-zone-detail,
+.medical-gas-linked,
+.medical-gas-actions {
+  border: 1px solid #e0eaf2;
+  border-radius: 5px;
+  background: #fbfdff;
+  padding: 10px;
+}
+
+.medical-gas-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 9px;
+}
+
+.medical-gas-kpis article {
+  border-left: 3px solid #176fae;
+  background: #ffffff;
+  padding: 8px;
+}
+
+.medical-gas-kpis span,
+.medical-gas-kpis strong,
+.medical-gas-zone-card strong,
+.medical-gas-zone-card span,
+.medical-gas-zone-card small,
+.medical-gas-linked strong,
+.medical-gas-linked span,
+.medical-gas-linked small,
+.medical-gas-flow-list strong,
+.medical-gas-flow-list span,
+.medical-gas-flow-list small {
+  display: block;
+}
+
+.medical-gas-kpis span,
+.medical-gas-zone-card span,
+.medical-gas-zone-card small,
+.medical-gas-linked span,
+.medical-gas-linked small,
+.medical-gas-flow-list span,
+.medical-gas-flow-list small,
+.medical-gas-zone-detail p {
+  color: #637a8f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.medical-gas-zone-card {
+  width: 100%;
+  display: grid;
+  gap: 5px;
+  text-align: left;
+  background: #ffffff;
+  color: #183752;
+  border-color: #d8e6f0;
+}
+
+.medical-gas-zone-card.selected {
+  border-color: #1f74b7;
+  box-shadow: 0 0 0 2px rgba(31, 116, 183, 0.1);
+}
+
+.medical-gas-linked,
+.medical-gas-actions,
+.medical-gas-flow-list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.medical-gas-linked article,
+.medical-gas-flow-list article {
+  border: 1px solid #dfeaf2;
+  border-radius: 5px;
+  background: #ffffff;
+  padding: 9px;
+}
+
+.medical-gas-flow-list article:first-child {
+  border-left: 3px solid #e55345;
 }
 
 .monitoring-alert-workbench {
@@ -1310,6 +1408,10 @@ button {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .medical-gas-workbench {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .monitoring-alert-workbench {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1319,6 +1421,7 @@ button {
   }
 
   .dispatch-panel,
+  .medical-gas-panel,
   .spatial-panel,
   .alert-panel,
   .module-panel,
@@ -1374,6 +1477,7 @@ button {
   .service-stage-grid,
   .asset-maintenance-workbench,
   .iot-workbench,
+  .medical-gas-workbench,
   .monitoring-alert-workbench {
     grid-template-columns: 1fr;
   }

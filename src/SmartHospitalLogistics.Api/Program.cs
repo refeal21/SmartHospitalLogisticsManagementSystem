@@ -156,6 +156,15 @@ api.MapPost("/monitoring-alarms/{alarmNo}/convert-to-work-order", (
     })
     .WithName("ConvertMonitoringAlarmToWorkOrder");
 
+api.MapGet("/medical-gas-board", (IMedicalGasService service) => service.GetBoard())
+    .WithName("GetMedicalGasBoard");
+
+api.MapGet("/medical-gas-zones/{zoneCode}", (string zoneCode, IMedicalGasService service) =>
+    service.GetZoneDetail(zoneCode) is { } detail
+        ? Results.Ok(detail)
+        : Results.NotFound(new { error = $"Medical gas zone {zoneCode} was not found." }))
+    .WithName("GetMedicalGasZoneDetail");
+
 app.Run();
 
 static IResult ToHttpResult(DispatchOperationResult result)
